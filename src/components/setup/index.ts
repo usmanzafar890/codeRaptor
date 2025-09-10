@@ -1,0 +1,1 @@
+export { default as SetupHandbook } from './setup-handbook'

@@ -1,0 +1,40 @@
+{
+  "triggeredVsResolved": [
+    {
+      "date": "Aug 4",
+      "open": 45,
+      "detected": 5,
+      "resolved": 35
+    },
+    {
+      "date": "Aug 11", 
+      "open": 40,
+      "detected": 5,
+      "resolved": 55
+    },
+    {
+      "date": "Aug 18",
+      "open": 45,
+      "detected": 10,
+      "resolved": 60
+    },
+    {
+      "date": "Aug 25",
+      "open": 35,
+      "detected": 5,
+      "resolved": 75
+    },
+    {
+      "date": "Sep 1",
+      "open": 30,
+      "detected": 5,
+      "resolved": 42
+    },
+    {
+      "date": "Sep 8",
+      "open": 45,
+      "detected": 5,
+      "resolved": 75
+    }
+  ]
+}
