@@ -14,13 +14,15 @@ const config = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Increase timeout for builds
+  // ✅ Updated for Next.js 15+
+  serverExternalPackages: [],
+
   experimental: {
-    serverComponentsExternalPackages: [],
     serverActions: {
-      bodySizeLimit: '2mb',
+      bodySizeLimit: "2mb",
     },
   },
+
   // Disable React strict mode for production
   reactStrictMode: false,
 };
