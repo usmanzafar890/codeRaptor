@@ -168,15 +168,12 @@ export const projectRouter = createTRPCRouter({
             console.error("Error polling commits after return:", error);
         });
 
-        // Calculate pagination values
         const skip = (input.page - 1) * input.limit;
         
-        // Build the where clause with optional filters
         const where: any = {
             projectId: input.projectId
         };
         
-        // Add optional filters if provided
         if (input.commitAuthorName) {
             where.commitAuthorName = input.commitAuthorName;
         }
@@ -185,10 +182,8 @@ export const projectRouter = createTRPCRouter({
             where.branchName = input.branchName;
         }
         
-        // Get total count for pagination metadata
         const totalCount = await ctx.db.commit.count({ where });
         
-        // Get paginated and filtered results
         const commits = await ctx.db.commit.findMany({
             where,
             orderBy: {
@@ -198,7 +193,6 @@ export const projectRouter = createTRPCRouter({
             take: input.limit
         });
         
-        // Return both the commits and pagination metadata
         return {
             commits,
             pagination: {
@@ -214,10 +208,8 @@ export const projectRouter = createTRPCRouter({
         projectId: z.string(),
     })).query(async ({ ctx, input }) => {
         
-        // Get paginated and filtered results
         const commits = await ctx.db.commit.findMany();
         
-        // Return both the commits and pagination metadata
         return {
             commits
         };
@@ -229,7 +221,6 @@ export const projectRouter = createTRPCRouter({
             commitHash: z.string(),
         }))
         .query(async ({ ctx, input }) => {
-            // 1. Find the project to get the GitHub URL
             const project = await ctx.db.project.findUnique({
                 where: { id: input.projectId },
                 select: { githubUrl: true },
@@ -239,13 +230,11 @@ export const projectRouter = createTRPCRouter({
                 throw new Error("Project not found or GitHub URL is missing.");
             }
 
-            // 2. Extract owner and repo from the GitHub URL
             const [owner, repo] = project.githubUrl.split("/").slice(-2);
             if (!owner || !repo) {
                 throw new Error("Invalid GitHub URL format.");
             }
 
-            // 3. Fetch the raw diff content using Octokit
             try {
                 const response = await octokit.rest.repos.getCommit({
                     owner,
@@ -287,7 +276,6 @@ export const projectRouter = createTRPCRouter({
     getProjectBranches: protectedProcedure.input(z.object({
         projectId: z.string(),
     })).query(async ({ ctx, input }) => {
-        // Using type assertion to fix TypeScript error
         return await (ctx.db as any).projectBranch.findMany({
             where: {
                 projectId: input.projectId
@@ -301,15 +289,14 @@ export const projectRouter = createTRPCRouter({
     addProjectBranch: protectedProcedure.input(z.object({
         projectId: z.string(),
         name: z.string(),
-        isActive: z.boolean().default(false), // Using isActive instead of isEnable for compatibility
+        isActive: z.boolean().default(false), 
         isOpen: z.boolean().default(true)
     })).mutation(async ({ ctx, input }) => {
-        // Using type assertion to fix TypeScript error
         return await (ctx.db as any).projectBranch.create({
             data: {
                 projectId: input.projectId,
                 name: input.name,
-                isActive: input.isActive, // Using isActive instead of isEnable
+                isActive: input.isActive, 
                 isOpen: input.isOpen
             }
         });
@@ -317,16 +304,15 @@ export const projectRouter = createTRPCRouter({
 
     updateProjectBranch: protectedProcedure.input(z.object({
         id: z.string(),
-        isActive: z.boolean().optional(), // Using isActive instead of isEnable for compatibility
+        isActive: z.boolean().optional(), 
         isOpen: z.boolean().optional()
     })).mutation(async ({ ctx, input }) => {
-        // Using type assertion to fix TypeScript error
         return await (ctx.db as any).projectBranch.update({
             where: {
                 id: input.id
             },
             data: {
-                isActive: input.isActive, // Using isActive instead of isEnable
+                isActive: input.isActive, 
                 isOpen: input.isOpen
             }
         });
@@ -335,7 +321,6 @@ export const projectRouter = createTRPCRouter({
     deleteProjectBranch: protectedProcedure.input(z.object({
         id: z.string()
     })).mutation(async ({ ctx, input }) => {
-        // Using type assertion to fix TypeScript error
         return await (ctx.db as any).projectBranch.delete({
             where: {
                 id: input.id
@@ -402,7 +387,6 @@ export const projectRouter = createTRPCRouter({
 
     deleteMeeting: protectedProcedure.input(z.object({ meetingId: z.string() })).mutation(async ({ ctx, input }) => {
         try {
-            // First find the meeting to get its URL before deletion
             const meeting = await ctx.db.meeting.findUnique({
                 where: {
                     id: input.meetingId
@@ -413,25 +397,22 @@ export const projectRouter = createTRPCRouter({
                 throw new Error(`Meeting with ID ${input.meetingId} not found`);
             }
 
-            // Delete all related issues
             await ctx.db.issue.deleteMany({
                 where: {
                     meetingId: input.meetingId
                 }
             });
 
-            // Delete the meeting from the database
             const deletedMeeting = await ctx.db.meeting.delete({
                 where: {
                     id: input.meetingId
                 }
             });
 
-            // Delete the associated file from Firebase Storage
             if (meeting.meetingUrl) {
                 await deleteFile(meeting.meetingUrl).catch(error => {
                     console.error('Error deleting file from Firebase:', error);
-                    // We don't throw here to avoid breaking the deletion flow if file deletion fails
+                  
                 });
             }
 

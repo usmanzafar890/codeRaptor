@@ -1,11 +1,11 @@
 "use client"
 
 import useProject from "@/hooks/use-project"
-import React, { useState, useMemo, useEffect } from "react" // Ensure useEffect is imported
+import React, { useState, useMemo, useEffect } from "react" 
 import { api } from "@/trpc/react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, GitBranch, Loader2, UserRound, MessageSquareText } from "lucide-react" // Import new icons
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, GitBranch, Loader2, UserRound, MessageSquareText } from "lucide-react" 
 import {
     Select,
     SelectContent,
@@ -26,7 +26,6 @@ const CommitLog = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const commitsPerPage = 10;
     
-    // Use the updated API with server-side filtering and pagination
     const { data, isLoading, isError, refetch } = api.project.getCommits.useQuery({
         projectId,
         commitAuthorName: selectedAuthor === "all" ? undefined : selectedAuthor,
@@ -35,14 +34,12 @@ const CommitLog = () => {
         limit: commitsPerPage
     });
 
-    // Memo to get unique branches
     const uniqueBranches = useMemo(() => {
         if (!data?.commits) return [];
         const branches = new Set(data.commits.map(commit => commit.branchName).filter(Boolean) as string[]);
         return ["all", ...Array.from(branches).sort()];
     }, [data?.commits]);
 
-    // Memo to get unique authors
     const uniqueAuthors = useMemo(() => {
         if (!data?.commits) return [];
         const authors = new Set(data.commits.map(commit => commit.commitAuthorName).filter(Boolean) as string[]);
@@ -116,8 +113,7 @@ const CommitLog = () => {
         return (
             <div className="bg-white p-6 rounded-lg shadow-xl border border-gray-100">
                 {/* Header Skeleton */}
-                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-64"></div> {/* Title skeleton */}
+                <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4 animate-pulse">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                         <div className="h-6 bg-gray-200 rounded w-28"></div> {/* Filter label skeleton */}
                         <div className="h-10 bg-gray-200 rounded w-full sm:w-[200px]"></div> {/* Select trigger skeleton */}
@@ -185,9 +181,8 @@ const CommitLog = () => {
     return (
 
         <div className="bg-white p-6 rounded-lg shadow-xl border border-gray-100">
-            <div className="mb-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"> {/* Changed to lg:flex-row for more space */}
-                <h2 className="text-2xl font-extrabold text-gray-900 leading-tight flex-shrink-0">Project Commit History</h2>
-                <div className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-4 flex-wrap gap-2"> {/* flex-wrap and gap for responsiveness */}
+            <div className="mb-6 flex flex-col md:flex-row items-start md:items-center justify-end gap-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center space-y-2 md:space-y-0 md:space-x-4 flex-wrap gap-2">
 
                     {/* Branch Filter */}
                     <div className="flex flex-col space-x-2">

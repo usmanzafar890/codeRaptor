@@ -4,7 +4,7 @@ import useProject from "@/hooks/use-project"
 import { ExternalLink, Github } from "lucide-react"
 import React from "react"
 import Link from "next/link"
-import CommitLog from "./commit-log"
+import ProjectHistoryView from "./project-history-view"
 import AskQuestionCard from "./ask-question-card"
 import MeetingCard from "./meeting-card"
 import TeamMembers from "./team-members"
@@ -46,7 +46,7 @@ const DashboardView = () => {
             </div>
            </div>
            <div className="mt-6 sm:mt-8"></div>
-           <CommitLog />
+           <ProjectHistoryView />
         </div> 
     )
 }
