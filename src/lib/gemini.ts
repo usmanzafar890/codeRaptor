@@ -1,9 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { Document } from "@langchain/core/documents";
+import { traceAICall } from './langsmith-tracing';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
-export const aiSummariseCommit = async (diff: string) => {
+
+
+const _aiSummariseCommit = async (diff: string) => {
     // https://github.com/docker/genai-stack/commit/<commithash>.diff
     const response = await model.generateContent([
         `You are an expert programmer, and you are trying to summarize a git diff.
@@ -40,7 +43,16 @@ export const aiSummariseCommit = async (diff: string) => {
     return response.response.text();
 }
 
-export async function summariseCode(doc: Document) {
+// we are exporting a traced version of the function so that we can see usage in LangSmith
+export const aiSummariseCommit = traceAICall(_aiSummariseCommit, {
+    name: 'ai_summarise_commit',
+    runType: 'llm',
+    tags: ['gemini', 'commit-summary'],
+    metadata: { model: 'gemini-2.5-flash-lite' }
+});
+
+
+async function _summariseCode(doc: Document) {
     console.log("getting summary for", doc.metadata.source);
     try {
     const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
@@ -60,7 +72,16 @@ ${code}
 return ""
 }}
 
-export async function generateEmbedding(summary:string) {
+// we are exporting a traced version of the function so that we can see usage in LangSmith
+export const summariseCode = traceAICall(_summariseCode, {
+    name: 'summarise_code',
+    runType: 'llm',
+    tags: ['gemini', 'code-summary', 'onboarding'],
+    metadata: { model: 'gemini-2.5-flash-lite' }
+});
+
+ 
+async function _generateEmbedding(summary:string) {
     const model = genAI.getGenerativeModel({
         model: "text-embedding-004"
     })
@@ -69,4 +90,12 @@ export async function generateEmbedding(summary:string) {
     const embedding = result.embedding
     return embedding.values
 }
+
+// we are exporting a traced version of the function so that we can see usage in LangSmith
+export const generateEmbedding = traceAICall(_generateEmbedding, {
+    name: 'generate_embedding',
+    runType: 'embedding',
+    tags: ['gemini', 'embedding', 'vector'],
+    metadata: { model: 'text-embedding-004' }
+});
 

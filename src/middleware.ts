@@ -29,6 +29,6 @@ export const config = {
     "/meetings",
     "/billing",
     "/join/:projectId",
-    "/create"
+    "/setup"
   ],
 };

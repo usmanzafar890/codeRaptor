@@ -41,7 +41,9 @@ const getFileCount = async (path: string, octokit: Octokit, githubOwner: string,
 
 export const checkCredits = async (githubUrl: string, githubToken?: string) => {
     //find out how many files are in the repo
+
     const octokit = new Octokit({ auth: githubToken || process.env.GITHUB_TOKEN})
+
     const githubOwner = githubUrl.split('/')[3]
     const githubRepo = githubUrl.split('/')[4]
     if (!githubOwner || !githubRepo) {
