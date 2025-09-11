@@ -16,7 +16,8 @@ export const pullRequestRouter = createTRPCRouter({
         repo: z.string(),
         state: z.enum(["open", "closed", "all"]).default("all")
     })).query(async ({ ctx, input }) => {
-        const prs = await getAllPullRequests(input.owner, input.repo, ctx.user.userId!, input.state);
+        const userId = ctx.user.userId!
+        const prs = await getAllPullRequests(input.owner, input.repo, userId, input.state);
         return { pullRequests: prs };
     })
 });

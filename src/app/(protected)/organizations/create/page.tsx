@@ -17,9 +17,12 @@ export default function CreateOrganizationPage() {
   const [description, setDescription] = useState("")
   const [logoUrl, setLogoUrl] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const utils = api.useUtils()
 
   const createOrganization = api.organization.createOrganization.useMutation({
     onSuccess: (data) => {
+      // Invalidate the getUserOrganizations query to refresh the data
+      utils.organization.getUserOrganizations.invalidate()
       toast.success("Organization created successfully")
       router.push(`/organizations/${data.id}`)
     },

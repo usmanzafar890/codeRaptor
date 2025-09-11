@@ -22,6 +22,7 @@ export default function ProjectCreateView() {
   const searchParams = useSearchParams()
   const organizationIdParam = searchParams.get('organizationId')
   const { setOrganizationId } = useOrganization()
+  const utils = api.useUtils()
   
   // Set organization ID from URL parameter if provided
   useEffect(() => {
@@ -48,6 +49,10 @@ export default function ProjectCreateView() {
   // Update project mutation to add organization ID
   const updateProject = api.project.updateProjectOrganization.useMutation({
     onSuccess: () => {
+      // Invalidate the organization projects query to refresh the data
+      if (organizationIdParam) {
+        utils.organization.getOrganizationProjects.invalidate({ organizationId: organizationIdParam })
+      }
       toast.success("Project updated successfully")
       if (organizationIdParam) {
         router.push(`/organizations/${organizationIdParam}`)

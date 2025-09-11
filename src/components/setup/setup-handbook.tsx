@@ -12,6 +12,8 @@ import { api } from "@/trpc/react"
 import { showSuccessToast, showErrorToast } from "@/components/ui/sonner"
 import useRefetch from "@/hooks/use-refetch"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
+import useProject from "@/hooks/use-project"
 
 // Import separated components
 import FirstStep from "./first-step"
@@ -72,6 +74,7 @@ type AllFormData = {
 export default function SetupHandbook() {
   const router = useRouter()
   const refetch = useRefetch()
+  const { setProjectId, invalidateProjects } = useProject()
   const stepOrder = ["repository", "branches", "integrations", "database", "environment", "team"]
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
@@ -196,12 +199,19 @@ export default function SetupHandbook() {
           name: allFormData.repository.projectName,
           githubUrl: githubUrlToCreate,
 
-          branches: allFormData?.branches?.selectedBranches?.map((branch) => ({ name: branch, isActive: true })) || ['main'],
+          branches: allFormData?.branches?.selectedBranches?.map((branch) => ({ name: branch, isActive: true })) || [{ name: 'main', isActive: true }],
 
         },
         {
-          onSuccess: () => {
-
+          onSuccess: (data) => {
+            // Invalidate projects data to ensure fresh data
+            invalidateProjects()
+            
+            // Set the newly created project as the active project
+            if (data && data.id) {
+              setProjectId(data.id)
+            }
+            
             setIsProjectCreated(true)
           },
           onError: () => {
@@ -221,10 +231,12 @@ export default function SetupHandbook() {
     showSuccessToast("Project created successfully")
     refetch()
     reset()
+    
+    // Make sure projects data is invalidated again before redirecting
+    invalidateProjects()
 
-
+    // Redirect to dashboard
     router.push('/dashboard')
-
   }
 
   const hasEnoughCredits = checkCredits?.data?.userCredits
@@ -447,7 +459,7 @@ export default function SetupHandbook() {
         {/* Header */}
         <div className="text-center mb-0">
           <div className="flex items-center justify-center mb-2">
-            <img src="/github-mark.svg" className="h-6 w-auto mr-3" alt="GitHub Logo" />
+            <Image src="/github-mark.svg" width={24} height={24} className="h-6 w-auto mr-3" alt="GitHub Logo" />
             <h1 className="text-2xl font-semibold text-black">Link your Github Repository</h1>
           </div>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-4">

@@ -157,6 +157,40 @@ export const projectRouter = createTRPCRouter({
         })
 
     }),
+    
+    getProject: protectedProcedure
+        .input(z.object({
+            id: z.string()
+        }))
+        .query(async ({ ctx, input }) => {
+            // Find the project and check if the user has access
+            const project = await ctx.db.project.findFirst({
+                where: {
+                    id: input.id,
+                    userToProjects: {
+                        some: {
+                            userId: ctx.user.userId!
+                        }
+                    },
+                    deletedAt: null
+                },
+                include: {
+                    branches: true,
+                    commits: {
+                        take: 5,
+                        orderBy: {
+                            commitDate: 'desc'
+                        }
+                    }
+                }
+            });
+            
+            if (!project) {
+                throw new Error('Project not found or you do not have access');
+            }
+            
+            return project;
+        }),
     getCommits: protectedProcedure.input(z.object({
         projectId: z.string(),
         commitAuthorName: z.string().optional(),

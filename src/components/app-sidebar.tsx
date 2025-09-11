@@ -13,6 +13,7 @@ import { useOrganization } from "@/hooks/use-organization";
 import { api } from "@/trpc/react";
 import { OrganizationDropdown } from "./organization/organization-dropdown";
 import { NavUser } from "./nav-user";
+import { useEffect } from "react";
 
 
 const items = [
@@ -50,12 +51,25 @@ export function AppSidebar() {
     const { open } = useSidebar()
     const { projects, projectId, setProjectId } = useProject()
     const { organizationId } = useOrganization()
+    const utils = api.useUtils()
     
     // Fetch organization projects if an organization is selected
     const { data: orgProjects, isLoading: isLoadingOrgProjects } = api.organization.getOrganizationProjects.useQuery(
         { organizationId: organizationId! },
-        { enabled: !!organizationId }
+        { 
+            enabled: !!organizationId,
+            staleTime: 0, // Always treat data as stale to ensure fresh data
+            refetchOnWindowFocus: true // Refetch when window regains focus
+        }
     )
+    
+    // Set up an effect to invalidate and refetch organization projects when this component mounts or organizationId changes
+    useEffect(() => {
+        if (organizationId) {
+            // Invalidate the getOrganizationProjects query to ensure fresh data
+            utils.organization.getOrganizationProjects.invalidate({ organizationId })
+        }
+    }, [organizationId, utils.organization.getOrganizationProjects])
 
     return (
         <Sidebar collapsible="icon" variant="floating">

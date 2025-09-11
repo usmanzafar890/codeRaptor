@@ -16,12 +16,17 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useEffect } from "react";
 
 export function OrganizationDropdown() {
   const router = useRouter();
   const { open } = useSidebar();
   const { organizationId, setOrganizationId } = useOrganization();
-  const { data: organizations, isLoading } = api.organization.getUserOrganizations.useQuery();
+  const utils = api.useUtils();
+  const { data: organizations, isLoading } = api.organization.getUserOrganizations.useQuery(undefined, {
+    staleTime: 0, // Always treat data as stale to ensure fresh data
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+  });
 
   const selectedOrg = organizations?.find(
     (org: any) => org.organizationId === organizationId
@@ -35,6 +40,12 @@ export function OrganizationDropdown() {
   const handleCreateOrganization = () => {
     router.push('/organizations/create');
   };
+
+  // Set up an effect to invalidate and refetch organization data when this component mounts
+  useEffect(() => {
+    // Invalidate the getUserOrganizations query to ensure fresh data
+    utils.organization.getUserOrganizations.invalidate();
+  }, [utils.organization.getUserOrganizations]);
 
   if (isLoading) {
     return (
