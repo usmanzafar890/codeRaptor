@@ -2,7 +2,7 @@
 
 Code Raptor is a comprehensive SaaS application that provides AI-powered code analysis, documentation generation, Q&A capabilities, and team collaboration tools for software development teams.
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture Overview ✨
 
 ### Technology Stack
 - **Frontend**: Next.js 14+ (App Router), React, TypeScript, Tailwind CSS
