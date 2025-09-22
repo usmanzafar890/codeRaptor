@@ -110,101 +110,84 @@ export function AppSidebar() {
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
-                {/* Organization Projects Section (conditionally rendered) */}
-                {organizationId && (
-                    <SidebarGroup>
-                        <SidebarGroupLabel>
-                            Organization Projects
-                        </SidebarGroupLabel>
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                {isLoadingOrgProjects ? (
-                                    <div className="p-2 text-sm text-slate-500">Loading projects...</div>
-                                ) : orgProjects && orgProjects.length > 0 ? (
-                                    <>
-                                        {orgProjects.map((project:any) => (
+                {/* Projects Section - Combined Personal and Organization */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>
+                        Projects
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            {/* Show loading state if org projects are loading */}
+                            {organizationId && isLoadingOrgProjects ? (
+                                <div className="p-2 text-sm text-slate-500">Loading projects...</div>
+                            ) : (
+                                <>
+                                    {/* Combine and deduplicate projects */}
+                                    {(() => {
+                                        // Create a map to track projects by ID to avoid duplicates
+                                        const projectMap = new Map();
+                                        
+                                        // Add personal projects to the map
+                                        projects?.forEach((project: any) => {
+                                            projectMap.set(project.id, {
+                                                ...project,
+                                                isPersonal: true
+                                            });
+                                        });
+                                        
+                                        // Add organization projects to the map if available
+                                        if (organizationId && orgProjects) {
+                                            orgProjects.forEach((project: any) => {
+                                                projectMap.set(project.id, {
+                                                    ...project,
+                                                    isOrg: true
+                                                });
+                                            });
+                                        }
+                                        
+                                        // Convert map back to array
+                                        return Array.from(projectMap.values()).map((project: any) => (
                                             <SidebarMenuItem key={project.id}>
                                                 <SidebarMenuButton asChild>
                                                     <div onClick={() => setProjectId(project.id)}>
                                                         <div className={cn(
-                                                            'rounded-sm border size-6 flex items-center justify-center text-sm bg-blue-50 text-blue-600',
+                                                            'rounded-sm border size-6 flex items-center justify-center text-sm',
                                                             {
-                                                                'bg-blue-600 text-white': project.id === projectId
+                                                                'bg-blue-50 text-blue-600': project.isOrg && project.id !== projectId,
+                                                                'bg-white text-primary': !project.isOrg && project.id !== projectId,
+                                                                'bg-blue-600 text-white': project.isOrg && project.id === projectId,
+                                                                'bg-primary text-white': !project.isOrg && project.id === projectId
                                                             }
                                                         )}>
                                                             {project.name[0]}
                                                         </div>
                                                         <span className="font-medium">{project.name}</span>
+                                                        {project.isOrg && (
+                                                            <span className="ml-2 text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                                                                Org
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </SidebarMenuButton>
                                             </SidebarMenuItem>
-                                        ))}
-                                        <div className="h-2"></div>
-                                        {open && (
+                                        ));
+                                    })()} 
+                                    
+                                    {/* Add project buttons */}
+                                    <div className="h-2"></div>
+                                    {open && (
+                                        <div className="flex flex-col gap-2">
                                             <SidebarMenuItem>
-                                                <Link href={`/projects/create?organizationId=${organizationId}`}>
+                                                <Link href="/setup">
                                                     <Button variant="outline" className="w-fit text-xs" size="sm">
                                                         <PlusIcon />
-                                                        Add Project
+                                                        Create Project
                                                     </Button>
                                                 </Link>
                                             </SidebarMenuItem>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="p-2 text-sm text-slate-500">
-                                        No projects in this organization
-                                        {open && (
-                                            <Link href={`/projects/create?organizationId=${organizationId}`}>
-                                                <Button variant="outline" className="w-full mt-2 text-xs" size="sm">
-                                                    <PlusIcon className="mr-1 h-3 w-3" />
-                                                    Add Project
-                                                </Button>
-                                            </Link>
-                                        )}
-                                    </div>
-                                )}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                )}
-
-                {/* Personal Projects Section */}
-                <SidebarGroup>
-                    <SidebarGroupLabel>
-                        Personal Projects
-                    </SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {projects?.map((project:any) => {
-                                return (
-                                    <SidebarMenuItem key={project.id}>
-                                        <SidebarMenuButton asChild>
-                                            <div onClick={() => setProjectId(project.id)}>
-                                                <div className={cn(
-                                                    'rounded-sm border size-6 flex items-center justify-center text-sm bg-white text-primary',
-                                                    {
-                                                        'bg-primary text-white': project.id === projectId
-                                                    }
-                                                )}>
-                                                    {project.name[0]}
-                                                </div>
-                                                <span className="font-medium">{project.name}</span>
-                                            </div>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                )
-                            })}
-                            <div className="h-2"> </div>
-                            {open && (
-                                <SidebarMenuItem>
-                                    <Link href="/setup">
-                                        <Button variant="outline" className="w-fit text-xs" size="sm">
-                                            <PlusIcon />
-                                            Create Project
-                                        </Button>
-                                    </Link>
-                                </SidebarMenuItem>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </SidebarMenu>
                     </SidebarGroupContent>

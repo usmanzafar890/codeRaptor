@@ -15,7 +15,7 @@ async function getAuthenticatedOctokit(userId: string) {
     });
 
     // If no account or access token is found, throw an error
-    if (!githubAccount || !githubAccount.accessToken) {
+    if (!githubAccount || !githubAccount.gitToken) {
         return new Octokit({
             auth: process.env.GITHUB_TOKEN,
         });
@@ -23,7 +23,7 @@ async function getAuthenticatedOctokit(userId: string) {
 
     // Create a new Octokit instance authenticated with the user's token
     return new Octokit({
-        auth: githubAccount.accessToken,
+        auth: githubAccount.gitToken
     });
 }
 

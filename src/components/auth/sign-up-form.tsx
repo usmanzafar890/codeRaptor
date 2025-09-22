@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import Link from "next/link";
+import Image from "next/image";
 import { OctagonAlertIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -18,12 +19,11 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { redirect, useRouter } from "next/navigation";
 import { FaGoogle, FaGithub } from "react-icons/fa";
-
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -36,7 +36,6 @@ export const SignUpForm = () => {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,21 +51,25 @@ export const SignUpForm = () => {
     setError(null);
     setPending(true);
 
-    authClient.signUp.email({
-      name: data.firstName + " " + data.lastName,
-      email: data.email,
-      password: data.password,
-      callbackURL: "/dashboard",
-    },
+    authClient.signUp.email(
       {
-        onSuccess: () => {
-          router.push("/dashboard");
+        name: data.firstName + " " + data.lastName,
+        email: data.email,
+        password: data.password,
+        callbackURL: "/welcome",
+      },
+      {
+        onSuccess: async () => {
+          // For new sign-ups, always redirect to welcome page
+          // New users will always need to complete the welcome flow
+          router.push("/welcome");
         },
         onError: ({ error }) => {
           setError(error.message);
           setPending(false);
         },
-      });
+      },
+    );
   };
 
   const onSocial = (provider: "google" | "github") => {
@@ -76,19 +79,19 @@ export const SignUpForm = () => {
     authClient.signIn.social(
       {
         provider: provider,
-        callbackURL: "/dashboard",
+        callbackURL: "/welcome",
       },
       {
-        onSuccess: () => {
-          router.push("/dashboard");
+        onSuccess: async () => {
+          router.push("/welcome");
         },
         onError: ({ error }: any) => {
           setError(error.message);
           setPending(false);
         },
-      });
+      },
+    );
   };
-
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,9 +101,7 @@ export const SignUpForm = () => {
             <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 md:p-8">
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col items-center text-center">
-                  <h1 className="text-2xl font-bold">
-                    Welcome back
-                  </h1>
+                  <h1 className="text-2xl font-bold">Welcome back</h1>
                   <p className="text-muted-foreground text-balance">
                     Sign in to your account
                   </p>
@@ -131,7 +132,7 @@ export const SignUpForm = () => {
                   </span>
                 </div>
 
-                <div className="grid gap-3 grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="firstName"
@@ -169,7 +170,6 @@ export const SignUpForm = () => {
                       </FormItem>
                     )}
                   />
-
                 </div>
 
                 <div className="grid gap-3">
@@ -214,7 +214,7 @@ export const SignUpForm = () => {
                 </div>
                 {!!error && (
                   <Alert className="bg-destructive/10 border-none">
-                    <OctagonAlertIcon className="h-4 w-4 !text-destructive" />
+                    <OctagonAlertIcon className="!text-destructive h-4 w-4" />
                     <AlertTitle>{error}</AlertTitle>
                   </Alert>
                 )}
@@ -228,17 +228,22 @@ export const SignUpForm = () => {
 
                 <div className="text-center text-sm">
                   Don&apos;t have an account?{" "}
-                  <Link href="/login" className="underline underline-offset-4">Sign in</Link>
+                  <Link href="/login" className="underline underline-offset-4">
+                    Sign in
+                  </Link>
                 </div>
               </div>
             </form>
           </Form>
 
-          <div className="bg-accent-foreground from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center">
-            <img src="/logo.svg" alt="Image" className="h-[92px] w-[92px]" />
-            <p className="text-2xl font-semibold text-white">
-              CodeRaptor
-            </p>
+          <div className="bg-accent-foreground from-sidebar-accent to-sidebar relative hidden flex-col items-center justify-center gap-y-4 md:flex">
+            <Image
+              src="/logo.svg"
+              alt="CodeRaptor Logo"
+              width={92}
+              height={92}
+            />
+            <p className="text-2xl font-semibold text-white">CodeRaptor</p>
           </div>
         </CardContent>
       </Card>

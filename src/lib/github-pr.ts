@@ -32,11 +32,11 @@ async function getAuthenticatedOctokit(userId?: string) {
         }
     });
 
-    if (!githubAccount || !githubAccount.accessToken) {
+    if (!githubAccount || !githubAccount.gitToken) {
         return new Octokit({ auth: process.env.GITHUB_TOKEN });
     }
 
-    return new Octokit({ auth: githubAccount.accessToken });
+    return new Octokit({ auth: githubAccount.gitToken });
 }
 
 const mapPullRequestData = (pr: any): PullRequestItem => ({

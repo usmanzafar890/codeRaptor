@@ -1,4 +1,3 @@
-
 import { SidebarProvider } from "@/components/ui/sidebar";
 import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -8,36 +7,34 @@ import { headers } from "next/headers";
 import { NavUser } from "@/components/nav-user";
 
 type Props = {
-    children: React.ReactNode
-}
+  children: React.ReactNode;
+};
 export interface User {
-    id: string;
-    name: string | null;
-    email: string;
-    emailVerified: boolean;
-    image: string | null;
+  id: string;
+  name: string | null;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
 }
 
 const SidebarLayout = async ({ children }: Props) => {
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="m-2 w-full">
+        <div className="border-sidebar-border bg-sidebar flex items-center justify-end gap-2 rounded-md border p-2 px-4 shadow">
+          <div className="flex w-full items-center justify-end md:w-[200px]">
+            <NavUser />
+          </div>
+        </div>
+        <div className="h-4"></div>
+        {/* main content */}
+        <div className="border-sidebar-border bg-sidebar h-[calc(100vh-6rem)] overflow-y-auto rounded-md border p-4 shadow">
+          {children}
+        </div>
+      </main>
+    </SidebarProvider>
+  );
+};
 
-    return (
-        <SidebarProvider>
-            <AppSidebar />
-            <main className="w-full m-2">
-
-                <div className="flex justify-end items-center gap-2 border-sidebar-border bg-sidebar border shadow rounded-md p-2 px-4">
-                    <div className="w-full md:w-[200px] flex items-center justify-end">
-                        <NavUser />
-                    </div>
-                </div>
-                <div className="h-4"></div>
-                {/* main content */}
-                <div className="border-sidebar-border bg-sidebar border shadow rounded-md overflow-y-auto h-[calc(100vh-6rem)] p-4">
-                    {children}
-                </div>
-            </main>
-        </SidebarProvider>
-    )
-}
-
-export default SidebarLayout
+export default SidebarLayout;

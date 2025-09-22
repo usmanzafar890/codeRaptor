@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/trpc/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, GitCommit, User } from 'lucide-react';
@@ -20,72 +20,31 @@ interface CommitAuthor {
 }
 
 export function TeamTab({ projectId }: TeamTabProps) {
-  const [authors, setAuthors] = useState<CommitAuthor[]>([]);
-  
   // Fetch team members
   const { data: teamMembers, isLoading: isLoadingTeam } = api.project.getTeamMembers.useQuery(
     { projectId },
     { staleTime: 60000 }
   );
-  
-  // Fetch all commits to extract authors
-  const { data: commitsData, isLoading: isLoadingCommits } = api.project.getCommitsSingle.useQuery(
-    { projectId },
-    { staleTime: 60000 }
-  );
-  
-  // Process commits to extract unique authors and their stats
-  useEffect(() => {
-    if (commitsData?.commits) {
-      const authorMap = new Map<string, CommitAuthor>();
-      
-      commitsData.commits.forEach(commit => {
-        if (!commit.commitAuthorName) return;
-        
-        const name = commit.commitAuthorName;
-        
-        if (authorMap.has(name)) {
-          const author = authorMap.get(name)!;
-          author.commitCount++;
-          
-          // Update last commit date if this commit is newer
-          if (commit.commitDate && (!author.lastCommitDate || new Date(commit.commitDate) > new Date(author.lastCommitDate))) {
-            author.lastCommitDate = commit.commitDate;
-          }
-        } else {
-          authorMap.set(name, {
-            name,
-            commitCount: 1,
-            lastCommitDate: commit.commitDate
-          });
-        }
-      });
-      
-      // Convert map to array and sort by commit count (descending)
-      const authorArray = Array.from(authorMap.values()).sort((a, b) => b.commitCount - a.commitCount);
-      setAuthors(authorArray);
-    }
-  }, [commitsData]);
 
   // Handle loading state
-  if (isLoadingTeam || isLoadingCommits) {
+  if (isLoadingTeam) {
     return <TeamLoadingSkeleton />;
   }
 
   // If no authors found
-  if (authors.length === 0) {
+  if (teamMembers?.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Project Team</CardTitle>
-          <CardDescription>Contributors and team members</CardDescription>
+          <CardDescription>Team Members on access level</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-lg font-medium text-gray-500">No team members found</p>
             <p className="text-sm text-gray-400 max-w-md mx-auto mt-2">
-              No commits have been recorded for this project yet
+              No team members have been added to this project yet
             </p>
           </div>
         </CardContent>
@@ -97,48 +56,18 @@ export function TeamTab({ projectId }: TeamTabProps) {
     <Card>
       <CardHeader>
         <CardTitle>Project Team</CardTitle>
-        <CardDescription>Contributors based on commit history</CardDescription>
+        <CardDescription>Team Members on access level</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {authors.map((author, index) => (
-            <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border">
-              <Avatar className="h-12 w-12">
-                <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {author.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">{author.name}</h3>
-                  <Badge variant="outline" className="bg-blue-50 text-blue-600">
-                    {author.commitCount} {author.commitCount === 1 ? 'commit' : 'commits'}
-                  </Badge>
-                </div>
-                
-                {author.email && (
-                  <p className="text-sm text-gray-500">{author.email}</p>
-                )}
-                
-                {author.lastCommitDate && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Last commit: {new Date(author.lastCommitDate).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        
+
         {/* Team Members Section (if available) */}
         {teamMembers && teamMembers.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-lg font-medium mb-4">Project Access</h3>
+          <div>
             <div className="space-y-3">
               {teamMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-md">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={member.user.image || ''} alt={member.user.name || ''} />
                     <AvatarFallback className="bg-green-100 text-green-600">
                       {member.user.name?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
@@ -147,7 +76,7 @@ export function TeamTab({ projectId }: TeamTabProps) {
                     <div className="flex items-center justify-between">
                       <p className="font-medium">{member.user.name}</p>
                       <Badge variant="secondary" className="text-xs">
-                        Member
+                        {member.access}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-500">{member.user.email}</p>

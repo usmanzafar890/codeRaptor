@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import Link from "next/link";
+import Image from "next/image";
 import { OctagonAlertIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -54,8 +55,35 @@ export const LoginForm = () => {
            
         },
         {
-            onSuccess: () => {
-                router.push("/dashboard");
+            onSuccess: async () => {
+                try {
+                    // Check if user has completed welcome flow
+                    const response = await fetch('/api/user/welcome-status', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // If welcome is completed, go to dashboard, otherwise go to welcome
+                        if (data.welcomeCompleted) {
+                            router.push('/dashboard');
+                        } else {
+                            router.push('/welcome');
+                        }
+                    } else {
+                        // If there's an error checking status, default to welcome page
+                        // The middleware will handle redirecting if needed
+                        router.push('/welcome');
+                    }
+                } catch (error) {
+                    console.error('Error checking welcome status:', error);
+                    // Default to welcome page if there's an error
+                    router.push('/welcome');
+                }
             },
             onError: ({ error }) => {
                 setError(error.message);
@@ -74,8 +102,35 @@ export const LoginForm = () => {
                 
             },
             {
-            onSuccess: () => {
-                router.push("/dashboard");
+            onSuccess: async () => {
+                try {
+                    // Check if user has completed welcome flow
+                    const response = await fetch('/api/user/welcome-status', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // If welcome is completed, go to dashboard, otherwise go to welcome
+                        if (data.welcomeCompleted) {
+                            router.push('/dashboard');
+                        } else {
+                            router.push('/welcome');
+                        }
+                    } else {
+                        // If there's an error checking status, default to welcome page
+                        // The middleware will handle redirecting if needed
+                        router.push('/welcome');
+                    }
+                } catch (error) {
+                    console.error('Error checking welcome status:', error);
+                    // Default to welcome page if there's an error
+                    router.push('/welcome');
+                }
             },
             onError: ({ error }) => {
                 setError(error.message);
@@ -188,7 +243,7 @@ export const LoginForm = () => {
                     </Form>
 
                     <div className="bg-accent-foreground from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center">
-                        <img src="/logo.svg" alt="Image" className="h-[92px] w-[92px]" />
+                        <Image src="/logo.svg" alt="CodeRaptor Logo" width={92} height={92} />
                         <p className="text-2xl font-semibold text-white">
                             CodeRaptor
                         </p>

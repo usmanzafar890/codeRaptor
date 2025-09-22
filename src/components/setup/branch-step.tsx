@@ -67,7 +67,11 @@ export default function BranchStep({
                 onCheckedChange={(checked) =>
                   setAllFormData((prev: any) => ({
                     ...prev,
-                    branches: { ...prev.branches, allRepositories: checked , selectedBranches: allBranches },
+                    branches: { 
+                      ...prev.branches, 
+                      allRepositories: checked, 
+                      selectedBranches: checked ? allBranches : ['main']
+                    },
                   }))
                 }
               />
@@ -90,6 +94,7 @@ export default function BranchStep({
                     branches: { ...prev.branches, selectedBranches: branches },
                   }))
                 }
+                disabled={allFormData.branches.allRepositories}
               />
             </div>
           </div>

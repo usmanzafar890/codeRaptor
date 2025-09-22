@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-import { CheckCircle2, Circle, Github, Users, Settings, Database, Zap, GitBranch, Loader2 } from 'lucide-react'
+import { Building2, CheckCircle2, Circle, Github, Users, Settings, Database, Zap, GitBranch, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
@@ -22,6 +22,7 @@ import IntegrationsStep from "./integrations-step"
 import DatabaseStep from "./database-step"
 import EnvironmentStep from "./environment-step"
 import TeamStep from "./team-step"
+import OrganizationStep from "./organization-step"
 import ProjectCreationLoader from "./project-loader"
 
 interface StepState {
@@ -62,8 +63,13 @@ type TeamFormData = {
   role: string
 }
 
+type OrganizationFormData = {
+  organizationId: string | null
+}
+
 type AllFormData = {
   repository: RepositoryFormData
+  organization: OrganizationFormData
   integrations: IntegrationsFormData
   branches: BranchesFormData
   database: DatabaseFormData
@@ -75,13 +81,14 @@ export default function SetupHandbook() {
   const router = useRouter()
   const refetch = useRefetch()
   const { setProjectId, invalidateProjects } = useProject()
-  const stepOrder = ["repository", "branches", "integrations", "database", "environment", "team"]
+  const stepOrder = ["repository", "organization", "branches", "integrations", "database", "environment", "team"]
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const currentStepId = stepOrder[currentStepIndex]
 
   const [steps, setSteps] = useState<{ [key: string]: StepState }>({
     repository: { status: "active" },
+    organization: { status: "pending" },
     integrations: { status: "pending" },
     branches: { status: "pending" },
     database: { status: "pending" },
@@ -93,6 +100,9 @@ export default function SetupHandbook() {
     repository: {
       githubUrl: "",
       projectName: "",
+    },
+    organization: {
+      organizationId: null,
     },
     integrations: {
       slack: false,
@@ -127,6 +137,7 @@ export default function SetupHandbook() {
   const [repoType, setRepoType] = useState<"public" | "private">("public")
   const [selectedPrivateRepo, setSelectedPrivateRepo] = useState<string>("")
   const [isGitHubConnected, setIsGitHubConnected] = useState(false)
+  console.log("🚀 ~ SetupHandbook ~ isGitHubConnected:", isGitHubConnected)
 
   // Check if user is connected to GitHub
   const checkGitHubConnection = api.project.checkGitHubConnection.useQuery()
@@ -134,7 +145,19 @@ export default function SetupHandbook() {
   // Update GitHub connection status when data is available
   useEffect(() => {
     if (checkGitHubConnection.data) {
-      setIsGitHubConnected(!!checkGitHubConnection.data.isConnected)
+      // Check if either token or installation is valid
+      const hasValidConnection = checkGitHubConnection.data.hasValidToken || 
+                                checkGitHubConnection.data.hasValidInstallation;
+      
+      setIsGitHubConnected(hasValidConnection);
+      
+      // Log detailed connection status for debugging
+      console.log("GitHub Connection Status:", {
+        isConnected: hasValidConnection,
+        hasValidToken: checkGitHubConnection.data.hasValidToken,
+        hasValidInstallation: checkGitHubConnection.data.hasValidInstallation,
+        hasPrivateRepoAccess: checkGitHubConnection.data.hasPrivateRepoAccess
+      });
     }
   }, [checkGitHubConnection.data])
 
@@ -198,7 +221,7 @@ export default function SetupHandbook() {
         {
           name: allFormData.repository.projectName,
           githubUrl: githubUrlToCreate,
-
+          organizationId: allFormData.organization.organizationId,
           branches: allFormData?.branches?.selectedBranches?.map((branch) => ({ name: branch, isActive: true })) || [{ name: 'main', isActive: true }],
 
         },
@@ -390,6 +413,17 @@ export default function SetupHandbook() {
           isGitHubConnected={isGitHubConnected}
           setIsGitHubConnected={setIsGitHubConnected}
           getValues={getValues}
+        />
+      ),
+    },
+    organization: {
+      icon: <Building2 className="w-3 h-3" />,
+      title: "Select Organization",
+      description: "Choose an organization for this project",
+      content: (
+        <OrganizationStep
+          allFormData={allFormData}
+          setAllFormData={setAllFormData}
         />
       ),
     },

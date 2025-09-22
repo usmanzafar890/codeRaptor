@@ -25,6 +25,7 @@ model User {
   email              String              @unique
   emailVerified      Boolean
   image              String?
+  welcomeCompleted   Boolean             @default(false)
   sessions           Session[]
   accounts           Account[]
   organizations      OrganizationMember[]
@@ -73,6 +74,8 @@ model userToProject {
   projectId String
   project   Project  @relation(fields: [projectId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+
+  access    ProjectAccess @default(VIEW_ONLY)
 
   @@unique([userId, projectId])
 }
@@ -182,11 +185,13 @@ model Account {
   userId                String
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
+  gitToken              String?
   refreshToken          String?
   idToken               String?
   accessTokenExpiresAt  DateTime?
   refreshTokenExpiresAt DateTime?
   scope                 String?
+  installationId        Int?
   password              String?
   createdAt             DateTime
   updatedAt             DateTime
@@ -235,4 +240,11 @@ enum OrgRole {
   OWNER
   ADMIN
   MEMBER
+}
+
+enum ProjectAccess {
+  OWNER
+  FULL_ACCESS
+  EDIT
+  VIEW_ONLY
 }

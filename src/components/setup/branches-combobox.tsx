@@ -16,9 +16,10 @@ interface ComboboxCitiesProps {
   selectedBranches: string[]
   onBranchesChange: (branches: string[]) => void
   allBranches: string[]
+  disabled?: boolean
 }
 
-export function ComboboxCities({ selectedBranches, onBranchesChange, allBranches }: ComboboxCitiesProps) {
+export function ComboboxCities({ selectedBranches, onBranchesChange, allBranches, disabled = false }: ComboboxCitiesProps) {
   const [open, setOpen] = React.useState(false)
 
   const toggleSelection = (value: string) => {
@@ -29,12 +30,13 @@ export function ComboboxCities({ selectedBranches, onBranchesChange, allBranches
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           role="combobox"
           className="w-48 bg-white justify-between h-7 px-3 text-xs"
+          disabled={disabled}
         >
           {selectedBranches.length === 0 ? (
             <span>Select Branches</span>
