@@ -5,6 +5,7 @@ import SignOutButton from "@/components/auth/sign-out-button";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NavUser } from "@/components/nav-user";
+import InvitationNotificationsWrapper from "@/components/layout/invitation-notifications-wrapper";
 
 type Props = {
   children: React.ReactNode;
@@ -23,7 +24,8 @@ const SidebarLayout = async ({ children }: Props) => {
       <AppSidebar />
       <main className="m-2 w-full">
         <div className="border-sidebar-border bg-sidebar flex items-center justify-end gap-2 rounded-md border p-2 px-4 shadow">
-          <div className="flex w-full items-center justify-end md:w-[200px]">
+          <div className="flex w-full items-center justify-end gap-2 md:w-[200px]">
+            <InvitationNotificationsWrapper />
             <NavUser />
           </div>
         </div>

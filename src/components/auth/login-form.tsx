@@ -6,7 +6,6 @@ import Image from "next/image";
 import { OctagonAlertIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -57,6 +56,21 @@ export const LoginForm = () => {
         {
             onSuccess: async () => {
                 try {
+                    try {
+                        // We use the email from the form data
+                        await fetch('/api/send-login-notification', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email: data.email
+                            })
+                        });
+                    } catch (emailError) {
+                        console.error('Error sending login notification:', emailError);
+                    }
+                    
                     // Check if user has completed welcome flow
                     const response = await fetch('/api/user/welcome-status', {
                         method: 'GET',
@@ -104,6 +118,35 @@ export const LoginForm = () => {
             {
             onSuccess: async () => {
                 try {
+                    // For social login, we need to get the user's email first
+                    const userResponse = await fetch('/api/user/me', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        if (userData.email) {
+                            // Send login notification email
+                            try {
+                                await fetch('/api/send-login-notification', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        email: userData.email
+                                    })
+                                });
+                            } catch (emailError) {
+                                console.error('Error sending login notification:', emailError);
+                                // Continue with login flow even if email fails
+                            }
+                        }
+                    }
+                    
                     // Check if user has completed welcome flow
                     const response = await fetch('/api/user/welcome-status', {
                         method: 'GET',
@@ -206,7 +249,15 @@ export const LoginForm = () => {
                                         name="password"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Password</FormLabel>
+                                                <div className="flex justify-between items-center">
+                                                    <FormLabel>Password</FormLabel>
+                                                    <Link 
+                                                        href="/reset-password" 
+                                                        className="text-xs text-primary hover:underline"
+                                                    >
+                                                        Forgot password?
+                                                    </Link>
+                                                </div>
                                                 <FormControl>
                                                     <Input
                                                         type="password"

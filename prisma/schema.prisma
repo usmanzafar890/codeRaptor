@@ -76,6 +76,9 @@ model userToProject {
   user      User     @relation(fields: [userId], references: [id])
 
   access    ProjectAccess @default(VIEW_ONLY)
+  status    InvitationStatus @default(PENDING)
+  invitedAt DateTime @default(now())
+  invitedBy String?
 
   @@unique([userId, projectId])
 }
@@ -247,4 +250,10 @@ enum ProjectAccess {
   FULL_ACCESS
   EDIT
   VIEW_ONLY
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }

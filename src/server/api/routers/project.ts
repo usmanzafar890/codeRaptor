@@ -116,7 +116,9 @@ export const projectRouter = createTRPCRouter({
           userToProjects: {
             create: {
               userId: ctx.user.userId!,
-              access: "OWNER"
+              access: "OWNER",
+              status: "ACCEPTED",
+              invitedBy: ctx.user.userId!,
             },
           },
         },
@@ -159,11 +161,13 @@ export const projectRouter = createTRPCRouter({
       return project;
     }),
   getProjects: protectedProcedure.query(async ({ ctx }) => {
-    return await ctx.db.project.findMany({
+    const projects = await ctx.db.project.findMany({
       where: {
         userToProjects: {
           some: {
             userId: ctx.user.userId!,
+            // Only include projects where the user has accepted the invitation
+            status: "ACCEPTED",
           },
         },
         deletedAt: null,
@@ -176,6 +180,7 @@ export const projectRouter = createTRPCRouter({
         },
       },
     });
+    return projects;
   }),
 
   getMyProjectsWithAccess: protectedProcedure.query(async ({ ctx }) => {
@@ -184,6 +189,8 @@ export const projectRouter = createTRPCRouter({
         userToProjects: {
           some: {
             userId: ctx.user.userId!,
+            // Only include projects where the user has accepted the invitation
+            status: "ACCEPTED",
           },
         },
         deletedAt: null,
@@ -212,6 +219,8 @@ export const projectRouter = createTRPCRouter({
           userToProjects: {
             some: {
               userId: ctx.user.userId!,
+              // Only allow access to projects where the user has accepted the invitation
+              status: "ACCEPTED",
             },
           },
           deletedAt: null,
@@ -244,6 +253,19 @@ export const projectRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      // First check if the user has access to this project and has accepted the invitation
+      const userProject = await ctx.db.userToProject.findFirst({
+        where: {
+          projectId: input.projectId,
+          userId: ctx.user.userId!,
+          status: "ACCEPTED",
+        },
+      });
+
+      if (!userProject) {
+        throw new Error("Project not found or you don't have access. You may need to accept the invitation first.");
+      }
+
       pollCommits(input.projectId, ctx.user.userId!).catch((error) => {
         console.error("Error polling commits after return:", error);
       });
@@ -486,7 +508,7 @@ export const projectRouter = createTRPCRouter({
           meetingUrl: input.meetingUrl,
           projectId: input.projectId,
           name: input.name,
-          status: "PROCESSING",
+          status: "PROCESSING", // This is fine, it's for the Meeting model
         },
       });
       return meeting;
@@ -597,14 +619,49 @@ export const projectRouter = createTRPCRouter({
       if (existingInvitation) {
         throw new Error("User is already a member of this project.");
       }
+      
+      // Get project details for notification
+      const project = await ctx.db.project.findUnique({
+        where: {
+          id: input.projectId,
+        },
+        select: {
+          name: true,
+        },
+      });
 
-      return await ctx.db.userToProject.create({
+      if (!project) {
+        throw new Error("Project not found.");
+      }
+
+      // Create invitation
+      const invitation = await ctx.db.userToProject.create({
         data: {
           userId: userToInvite.id,
           projectId: input.projectId,
           access: input.access,
+          status: "PENDING",
+          invitedBy: ctx.user.userId,
+        },
+        include: {
+          project: {
+            select: {
+              name: true,
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
         },
       });
+
+      // TODO: Send email notification to the invited user
+      // This would be implemented with your email service
+
+      return invitation;
     }),
 
   updateUserAccess: protectedProcedure
@@ -694,14 +751,233 @@ export const projectRouter = createTRPCRouter({
   getTeamMembers: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
-      return await ctx.db.userToProject.findMany({
+      try {
+        const members = await ctx.db.userToProject.findMany({
+          where: {
+            projectId: input.projectId,
+          },
+          include: {
+            user: true,
+            project: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: [
+            { status: 'asc' },
+            { createdAt: 'desc' },
+          ],
+        });
+        
+        // Get inviter details for pending invitations
+        const membersWithInviterDetails = await Promise.all(
+          members.map(async (member) => {
+            if (member.invitedBy) {
+              const inviter = await ctx.db.user.findUnique({
+                where: { id: member.invitedBy },
+                select: { name: true, email: true, image: true },
+              });
+              return { ...member, inviter };
+            }
+            return member;
+          })
+        );
+        
+        return membersWithInviterDetails;
+      } catch (error) {
+        console.error('Error in getTeamMembers:', error);
+        return [];
+      }
+    }),
+
+  respondToInvitation: protectedProcedure
+    .input(
+      z.object({
+        invitationId: z.string(),
+        status: z.enum(["ACCEPTED", "DECLINED"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Find the invitation
+      const invitation = await ctx.db.userToProject.findUnique({
         where: {
-          projectId: input.projectId,
+          id: input.invitationId,
         },
         include: {
-          user: true,
+          project: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
+
+      if (!invitation) {
+        throw new Error("Invitation not found.");
+      }
+
+      // Check if the current user is the one being invited
+      if (invitation.userId !== ctx.user.userId) {
+        throw new Error("You are not authorized to respond to this invitation.");
+      }
+
+      // Check if the invitation is still pending
+      if (invitation.status !== "PENDING") {
+        throw new Error("This invitation has already been responded to.");
+      }
+
+      // Update the invitation status
+      const updatedInvitation = await ctx.db.userToProject.update({
+        where: {
+          id: input.invitationId,
+        },
+        data: {
+          status: input.status,
+        },
+        include: {
+          project: {
+            select: {
+              name: true,
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+      
+      return updatedInvitation;
+
+      // TODO: Send notification to the project owner/inviter
+    }),
+
+  getInvitationById: protectedProcedure
+    .input(z.object({ invitationId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        const invitation = await ctx.db.userToProject.findUnique({
+          where: {
+            id: input.invitationId,
+            userId: ctx.user.userId!,
+          },
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+                githubUrl: true,
+                createdAt: true,
+                userToProjects: {
+                  select: {
+                    user: {
+                      select: {
+                        name: true,
+                        email: true,
+                        image: true,
+                      },
+                    },
+                    access: true,
+                    status: true,
+                  },
+                  where: {
+                    access: "OWNER",
+                  },
+                  take: 1,
+                },
+              },
+            },
+            user: {
+              select: {
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+        });
+
+        if (!invitation) {
+          throw new Error("Invitation not found or you don't have permission to view it.");
+        }
+
+        return invitation;
+      } catch (error) {
+        console.error('Error in getInvitationById:', error);
+        throw error;
+      }
+    }),
+
+  getPendingInvitationCount: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const count = await ctx.db.userToProject.count({
+          where: {
+            userId: ctx.user.userId!,
+            status: "PENDING",
+          },
+        });
+        return count;
+      } catch (error) {
+        console.error('Error in getPendingInvitationCount:', error);
+        return 0;
+      }
+    }),
+
+  getMyInvitations: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        // Get pending invitations for the current user
+        return await ctx.db.userToProject.findMany({
+          where: {
+            userId: ctx.user.userId!,
+            status: "PENDING",
+          },
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+                githubUrl: true,
+                createdAt: true,
+                userToProjects: {
+                  select: {
+                    user: {
+                      select: {
+                        name: true,
+                        email: true,
+                        image: true,
+                      },
+                    },
+                    access: true,
+                    status: true,
+                  },
+                  where: {
+                    access: "OWNER",
+                  },
+                  take: 1,
+                },
+              },
+            },
+            user: {
+              select: {
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+      } catch (error) {
+        console.error('Error in getMyInvitations:', error);
+        return [];
+      }
     }),
 
   getMyCredits: protectedProcedure.query(async ({ ctx }) => {
@@ -912,6 +1188,7 @@ export const projectRouter = createTRPCRouter({
         where: {
           projectId: input.projectId,
           userId: ctx.user.userId!,
+          status: "ACCEPTED",
         },
       });
 

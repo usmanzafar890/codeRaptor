@@ -7,10 +7,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Plus } from "lucide-react"
 import { motion, AnimatePresence } from 'framer-motion'
 import { showSuccessToast, showErrorToast } from "@/components/ui/sonner"
+import { Badge } from "@/components/ui/badge"
 import TeamModalHeader from "./team-members/TeamModalHeader"
 import InviteByLink from "./team-members/InviteByLink"
 import InviteByEmail from "./team-members/InviteByEmail"
 import MemberList from "./team-members/MemberList"
+import { Clock } from "lucide-react"
 
 export type ProjectAccessLevel = 'FULL_ACCESS' | 'EDIT' | 'VIEW_ONLY';
 
@@ -20,11 +22,19 @@ interface MemberData {
     image: string;
     status: 'pending' | 'accepted' | 'declined';
     invitedAt: Date;
+    inviter?: {
+        name: string;
+        email: string;
+        image: string;
+    };
 }
 
 const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
     const { projectId, project } = useProject()
-    const { data: members, refetch } = api.project.getTeamMembers.useQuery({ projectId })
+    const { data: members, refetch, isLoading } = api.project.getTeamMembers.useQuery({ projectId })
+
+    // Get pending invitations count
+    const pendingCount = members?.filter(member => member.status?.toString().toUpperCase() === 'PENDING').length || 0
 
     const updateUserAccessMutation = api.project.updateUserAccess.useMutation({
         onSuccess: () => {
@@ -35,7 +45,7 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
             showErrorToast(error.message);
         },
     });
-
+    
     const removeUserMutation = api.project.removeUserFromProject.useMutation({
         onSuccess: () => {
             showSuccessToast("User removed successfully!");
@@ -47,8 +57,19 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
     });
 
     const inviteMutation = api.project.inviteUserToProject.useMutation({
-        onSuccess: () => {
-            showSuccessToast("Invitation sent successfully!");
+        onSuccess: (data) => {
+            showSuccessToast(`Invitation sent successfully to ${data.user.email}!`);
+            refetch();
+        },
+        onError: (error) => {
+            showErrorToast(error.message);
+        },
+    });
+
+    const respondToInvitationMutation = api.project.respondToInvitation.useMutation({
+        onSuccess: (data) => {
+            const action = data.status?.toString().toUpperCase() === 'ACCEPTED' ? 'accepted' : 'declined';
+            showSuccessToast(`You have ${action} the invitation to ${data.project.name}`);
             refetch();
         },
         onError: (error) => {
@@ -85,8 +106,13 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
                     userId: member.user.id,
                     name: member.user.name || email.split('@')[0] || email,
                     image: member.user.image || `https://ui-avatars.com/api/?name=${member.user.name || email.split('@')[0] || email}&background=random&color=fff&size=40`,
-                    status: 'accepted',
-                    invitedAt: new Date()
+                    status: member.status ? member.status.toLowerCase() as 'pending' | 'accepted' | 'declined' : 'accepted',
+                    invitedAt: new Date(member.invitedAt || member.createdAt),
+                    inviter: member.inviter ? {
+                        name: member.inviter.name,
+                        email: member.inviter.email,
+                        image: member.inviter.image
+                    } : undefined
                 };
             });
 
@@ -248,6 +274,10 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
             });
         }
 
+        // Store the original data for rollback
+        let originalPermission = memberPermissions[userEmail];
+        let originalData = memberData[userEmail];
+        
         // Then make the API call
         removeUserMutation.mutate({
             projectId: projectId!,
@@ -259,12 +289,12 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
                     // Restore the original data
                     setMemberPermissions(prev => ({
                         ...prev,
-                        [userEmail]: memberPermissions[userEmail]
+                        [userEmail]: originalPermission
                     }));
 
                     setMemberData(prev => ({
                         ...prev,
-                        [userEmail]: memberData[userEmail]
+                        [userEmail]: originalData
                     }));
                 }
             }
@@ -272,32 +302,91 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
     };
 
     const cancelInvitation = (email: string) => {
-        setMemberPermissions(prev => {
-            const newPermissions = { ...prev };
-            delete newPermissions[email];
-            return newPermissions;
-        });
+        if (memberData[email]) {
+            // Optimistically update the UI
+            const originalPermission = memberPermissions[email];
+            const originalData = memberData[email];
+            
+            setMemberPermissions(prev => {
+                const newPermissions = { ...prev };
+                delete newPermissions[email];
+                return newPermissions;
+            });
 
-        setMemberData(prev => {
-            const newData = { ...prev };
-            delete newData[email];
-            return newData;
-        });
+            setMemberData(prev => {
+                const newData = { ...prev };
+                delete newData[email];
+                return newData;
+            });
+            
+            // Call the API to remove the user from the project
+            removeUserMutation.mutate({
+                projectId: projectId!,
+                userId: memberData[email].userId,
+            }, {
+                onSuccess: () => {
+                    showSuccessToast("Invitation cancelled");
+                },
+                onError: () => {
+                    // If there's an error, revert the optimistic update
+                    setMemberPermissions(prev => ({
+                        ...prev,
+                        [email]: originalPermission
+                    }));
 
-        showSuccessToast("Invitation cancelled");
+                    setMemberData(prev => ({
+                        ...prev,
+                        [email]: originalData
+                    }));
+                }
+            });
+        }
     };
 
     const resendInvitation = (email: string) => {
-        setMemberData(prev => ({
-            ...prev,
-            [email]: {
-                ...prev[email]!,
-                status: 'pending',
-                invitedAt: new Date()
-            }
-        }));
-
-        showSuccessToast("Invitation resent");
+        if (memberData[email]) {
+            // Get the current access level
+            const access = memberPermissions[email];
+            const userId = memberData[email].userId;
+            
+            // Show loading state
+            setMemberData(prev => ({
+                ...prev,
+                [email]: {
+                    ...prev[email]!,
+                    status: 'pending'
+                }
+            }));
+            
+            // First remove the existing invitation
+            removeUserMutation.mutate({
+                projectId: projectId!,
+                userId: userId,
+            }, {
+                onSuccess: () => {
+                    // Then create a new invitation with the same access level
+                    inviteMutation.mutate({
+                        projectId: projectId!,
+                        email: email,
+                        access: access,
+                    }, {
+                        onSuccess: () => {
+                            // Update local state
+                            setMemberData(prev => ({
+                                ...prev,
+                                [email]: {
+                                    ...prev[email]!,
+                                    status: 'pending',
+                                    invitedAt: new Date()
+                                }
+                            }));
+                            
+                            showSuccessToast("Invitation resent");
+                        }
+                    });
+                }
+            });
+        }
     };
 
     React.useEffect(() => {
@@ -315,7 +404,7 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
         <>
             <div className="flex items-center gap-1 sm:gap-2 group">
                 <div className="flex items-center gap-1 sm:gap-2">
-                    {members?.slice(0, 3).map((member: any) => (
+                    {members?.filter(m => m.status?.toString().toUpperCase() === 'ACCEPTED').slice(0, 3).map((member: any) => (
                         <Avatar key={member.id} className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 border-2 border-white shadow-sm">
                             <AvatarImage src={member.user.image || ""} alt={member.user.name || "User"} />
                             <AvatarFallback className="text-xs sm:text-sm">
@@ -324,9 +413,20 @@ const TeamMembers = ({ isFullAccess }: { isFullAccess: boolean }) => {
                         </Avatar>
                     ))}
 
-                    {members && members.length > 3 && (
+                    {members && members.filter(m => m.status?.toString().toUpperCase() === 'ACCEPTED').length > 3 && (
                         <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-gray-100 border-2 border-white shadow-sm flex items-center justify-center">
-                            <span className="text-xs font-medium text-gray-600">+{members.length - 3}</span>
+                            <span className="text-xs font-medium text-gray-600">+{members.filter(m => m.status?.toString().toUpperCase() === 'ACCEPTED').length - 3}</span>
+                        </div>
+                    )}
+                    
+                    {pendingCount > 0 && (
+                        <div className="relative">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded-full bg-orange-100 border-2 border-white shadow-sm flex items-center justify-center">
+                                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 text-orange-500" />
+                            </div>
+                            <Badge variant="destructive" className="absolute -top-1 -right-1 h-3 w-3 p-0 flex items-center justify-center text-[10px]">
+                                {pendingCount}
+                            </Badge>
                         </div>
                     )}
 
