@@ -6,7 +6,6 @@ import Image from "next/image";
 import { OctagonAlertIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -61,22 +60,18 @@ export const SignUpForm = () => {
       {
         onSuccess: async () => {
           try {
-            // We use the email from the form data
-            await fetch('/api/send-login-notification', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: data.email
-                })
+            await fetch("/api/send-login-notification", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: data.email,
+              }),
             });
-        } catch (emailError) {
-            console.error('Error sending login notification:', emailError);
-            // Continue with login flow even if email fails
-        }
-          // For new sign-ups, always redirect to welcome page
-          // New users will always need to complete the welcome flow
+          } catch (emailError) {
+            console.error("Error sending login notification:", emailError);
+          }
           router.push("/welcome");
         },
         onError: ({ error }) => {

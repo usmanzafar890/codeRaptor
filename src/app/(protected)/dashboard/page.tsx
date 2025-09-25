@@ -1,25 +1,21 @@
-import React from "react"
-import DashboardView from "@/components/dashboard/dashboard-view"
-import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import { api } from "@/trpc/server"
-import useProject from "@/hooks/use-project"
+import React from "react";
+import DashboardView from "@/components/dashboard/dashboard-view";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { api } from "@/trpc/server";
 
-const DashboardPage = async() => {
-        const session = await auth.api.getSession({
-            headers: await headers()
-        });
-    
-        if (!session?.user) {
-            redirect("/login");
-        }
-    const projects = await api.project.getProjects()
+const DashboardPage = async () => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
+  if (!session?.user) {
+    redirect("/login");
+  }
+  const projects = await api.project.getProjects();
 
-    return (
-        <DashboardView user={session.user} projects={projects}/>
-    )
-}
+  return <DashboardView user={session.user} projects={projects} />;
+};
 
-export default DashboardPage
+export default DashboardPage;

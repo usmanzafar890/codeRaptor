@@ -9,12 +9,21 @@ import AskQuestionCard from "./ask-question-card";
 import MeetingCard from "./meeting-card";
 import TeamMembers from "./team-members";
 import ArchiveButton from "./archive-button";
+import EmptyDashboardView from "./empty-dashboard-view";
 
-const DashboardView = ({ user, projects }: { user: any, projects: any }) => {
+const DashboardView = ({ user, projects }: { user: any; projects: any }) => {
   const { project } = useProject();
   const projectId = project?.id;
+  
+  // If no project is selected, show the empty dashboard view
+  if (!projectId) {
+    return <EmptyDashboardView />;
+  }
+  
   const currentProject = projects.find((p: any) => p.id === projectId);
-  const isFullAccess = currentProject?.userToProjects.some((utp: any) => utp.access === "FULL_ACCESS" || utp.access === "OWNER");
+  const isFullAccess = currentProject?.userToProjects.some(
+    (utp: any) => utp.access === "FULL_ACCESS" || utp.access === "OWNER",
+  );
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -44,7 +53,6 @@ const DashboardView = ({ user, projects }: { user: any, projects: any }) => {
         </div>
       </div>
 
-      
       <div className="mt-4 sm:mt-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-5">
           <AskQuestionCard />

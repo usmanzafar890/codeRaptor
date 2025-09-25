@@ -7,10 +7,8 @@ import { OctagonAlertIcon } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LoadingButton from "@/components/ui/loading-button";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -25,12 +23,9 @@ import {
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 
-// Form schema for request password reset
 const requestResetSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address" }),
 });
-
-// Form schema for reset password with token
 const resetPasswordSchema = z.object({
     password: z.string().min(8, { message: "Password must be at least 8 characters" }),
     confirmPassword: z.string().min(8, { message: "Password must be at least 8 characters" }),
@@ -47,7 +42,6 @@ export const ResetPasswordForm = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // Form for requesting password reset
     const requestResetForm = useForm<z.infer<typeof requestResetSchema>>({
         resolver: zodResolver(requestResetSchema),
         defaultValues: {
@@ -55,7 +49,6 @@ export const ResetPasswordForm = () => {
         },
     });
 
-    // Form for resetting password with token
     const resetPasswordForm = useForm<z.infer<typeof resetPasswordSchema>>({
         resolver: zodResolver(resetPasswordSchema),
         defaultValues: {
@@ -64,7 +57,6 @@ export const ResetPasswordForm = () => {
         },
     });
 
-    // Handle request password reset
     const onRequestReset = (data: z.infer<typeof requestResetSchema>) => {
         setError(null);
         setSuccess(null);
@@ -88,7 +80,6 @@ export const ResetPasswordForm = () => {
         });
     };
 
-    // Handle reset password with token
     const onResetPassword = (data: z.infer<typeof resetPasswordSchema>) => {
         if (!token) {
             setError("Invalid or missing reset token");
@@ -109,7 +100,6 @@ export const ResetPasswordForm = () => {
             onSuccess: () => {
                 setSuccess("Your password has been reset successfully. You can now log in with your new password.");
                 setPending(false);
-                // Redirect to login page after 3 seconds
                 setTimeout(() => {
                     router.push("/login");
                 }, 3000);

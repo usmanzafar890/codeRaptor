@@ -7,9 +7,7 @@ type Props = {
   children: React.ReactNode
 }
 
-// Simple layout without sidebar or header for the welcome screen
 const WelcomeLayout = async ({ children }: Props) => {
-  // Check if user is authenticated
   const session = await auth.api.getSession({
     headers: await headers()
   });

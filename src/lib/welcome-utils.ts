@@ -20,7 +20,6 @@ export async function shouldShowWelcome(userId: string): Promise<boolean> {
       where: { userId }
     });
 
-    // Check if user has GitHub connected
     const userGithubConnection = await prisma.account.findFirst({
       where: { 
         userId,
@@ -28,12 +27,10 @@ export async function shouldShowWelcome(userId: string): Promise<boolean> {
       }
     });
 
-    // Show welcome screen if user doesn't have organizations or GitHub connected
     return !userOrganizations || !userGithubConnection;
   } catch (error) {
     console.error(`Error checking welcome status for user ${userId}:`, error);
     
-    // In case of error, fall back to checking organization and GitHub
     const userOrganizations = await prisma.organizationMember.findFirst({
       where: { userId }
     });

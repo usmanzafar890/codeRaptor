@@ -1,23 +1,23 @@
-'use server'
+"use server";
 
-import { streamText } from 'ai'
-import {createStreamableValue} from 'ai/rsc'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateEmbedding } from '@/lib/gemini'
-import { db } from '@/server/db'
-import { createRun } from '@/lib/langsmith-tracing'
+import { streamText } from "ai";
+import { createStreamableValue } from "ai/rsc";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { generateEmbedding } from "@/lib/gemini";
+import { db } from "@/server/db";
+import { createRun } from "@/lib/langsmith-tracing";
 
 const google = createGoogleGenerativeAI({
-    apiKey: process.env.GEMINI_API_KEY,
-})
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 export async function askQuestion(question: string, projectId: string) {
-    const stream = createStreamableValue()
+  const stream = createStreamableValue();
 
-    const queryVector = await generateEmbedding(question)
-    const vectorQuery = `[${queryVector.join(',')}]`
+  const queryVector = await generateEmbedding(question);
+  const vectorQuery = `[${queryVector.join(",")}]`;
 
-    const result = await db.$queryRaw`
+  const result = (await db.$queryRaw`
         SELECT "fileName", "sourceCode", "summary",
         1 - ("summaryEmbedding" <=> ${vectorQuery}::vector) AS similarity
         FROM "SourceCodeEmbedding"
@@ -25,23 +25,22 @@ export async function askQuestion(question: string, projectId: string) {
         AND "projectId" = ${projectId}
         ORDER BY similarity DESC
         LIMIT 10
-    ` as {fileName: string; sourceCode: string; summary: string; }[]
-    
-    
-    let context = ''
+    `) as { fileName: string; sourceCode: string; summary: string }[];
 
-    for (const doc of result) {
-        context += `source: ${doc.fileName}\ncode content: ${doc.sourceCode}\n summary of file: ${doc.summary}\n\n`
-    }
+  let context = "";
 
-    (async () => {
-        await createRun(
-            async () => {
-                try {
-                    console.log('Prompt sent to Gemini:', { context, question });
-                    const { textStream } = await streamText({
-                        model: google('gemini-2.5-flash-lite'),
-                        prompt: `
+  for (const doc of result) {
+    context += `source: ${doc.fileName}\ncode content: ${doc.sourceCode}\n summary of file: ${doc.summary}\n\n`;
+  }
+
+  (async () => {
+    await createRun(
+      async () => {
+        try {
+          console.log("Prompt sent to Gemini:", { context, question });
+          const { textStream } = await streamText({
+            model: google("gemini-2.5-flash-lite"),
+            prompt: `
                         You are a ai code assistant who answers questions about the codebase. Your target audience is a technical intern who has questions and is looking to understand the codebase.
                             AI assistant is a brand new, powerful, human-like artificial intelligence.
              The traits of AI include expert knowledge, helpfulness, cleverness and articulateness.
@@ -63,38 +62,38 @@ export async function askQuestion(question: string, projectId: string) {
              AI assisatant will not invent anything that is not drawn directly from the context.
              Answer in markdown syntax, with code snippets if need. Be as detailed as possible when asnwering.
              `,
-                    });
-            
-                    for await (const delta of textStream) {
-                        console.log('Server streaming delta:', delta);
-                        stream.update(delta);
-                    }
-                } catch (e) {
-                    console.error(e);
-                } finally {
-                    stream.done();
-                }
-            },
-            {
-                name: 'codebase_qa_streaming',
-                runType: 'chain',
-                inputs: { 
-                    question, 
-                    context_length: context.length,
-                    similar_files_count: result.length
-                },
-                tags: ['gemini', 'qa', 'codebase', 'streaming'],
-                metadata: { 
-                    model: 'gemini-2.5-flash-lite',
-                    similarity_threshold: 0.5,
-                    project_id: projectId
-                }
-            }
-        );
-    })();
-    
-    return {
-        output: stream.value,
-        filesReferences: result
-    }
+          });
+
+          for await (const delta of textStream) {
+            console.log("Server streaming delta:", delta);
+            stream.update(delta);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          stream.done();
+        }
+      },
+      {
+        name: "codebase_qa_streaming",
+        runType: "chain",
+        inputs: {
+          question,
+          context_length: context.length,
+          similar_files_count: result.length,
+        },
+        tags: ["gemini", "qa", "codebase", "streaming"],
+        metadata: {
+          model: "gemini-2.5-flash-lite",
+          similarity_threshold: 0.5,
+          project_id: projectId,
+        },
+      },
+    );
+  })();
+
+  return {
+    output: stream.value,
+    filesReferences: result,
+  };
 }

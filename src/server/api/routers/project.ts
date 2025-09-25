@@ -1,21 +1,16 @@
 import { getAllBranches, pollCommits } from "@/lib/github";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-  publicProcedure,
-} from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 import { checkCredits, indexGithubRepo } from "@/lib/github-loader";
 import { deleteFile } from "@/lib/firebase";
 import { Octokit } from "octokit";
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
 });
 
 export const projectRouter = createTRPCRouter({
-  // Update project organization
   updateProjectOrganization: protectedProcedure
     .input(
       z.object({
@@ -64,6 +59,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
     }),
+
   createProject: protectedProcedure
     .input(
       z.object({
@@ -160,6 +156,7 @@ export const projectRouter = createTRPCRouter({
       });
       return project;
     }),
+
   getProjects: protectedProcedure.query(async ({ ctx }) => {
     const projects = await ctx.db.project.findMany({
       where: {
@@ -212,14 +209,12 @@ export const projectRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Find the project and check if the user has access
       const project = await ctx.db.project.findFirst({
         where: {
           id: input.id,
           userToProjects: {
             some: {
               userId: ctx.user.userId!,
-              // Only allow access to projects where the user has accepted the invitation
               status: "ACCEPTED",
             },
           },
@@ -242,6 +237,7 @@ export const projectRouter = createTRPCRouter({
 
       return project;
     }),
+
   getCommits: protectedProcedure
     .input(
       z.object({
@@ -253,7 +249,6 @@ export const projectRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // First check if the user has access to this project and has accepted the invitation
       const userProject = await ctx.db.userToProject.findFirst({
         where: {
           projectId: input.projectId,
@@ -263,7 +258,9 @@ export const projectRouter = createTRPCRouter({
       });
 
       if (!userProject) {
-        throw new Error("Project not found or you don't have access. You may need to accept the invitation first.");
+        throw new Error(
+          "Project not found or you don't have access. You may need to accept the invitation first.",
+        );
       }
 
       pollCommits(input.projectId, ctx.user.userId!).catch((error) => {
@@ -479,6 +476,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
     }),
+
   getQuestions: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -494,6 +492,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
     }),
+
   uploadMeeting: protectedProcedure
     .input(
       z.object({
@@ -513,6 +512,7 @@ export const projectRouter = createTRPCRouter({
       });
       return meeting;
     }),
+
   getMeetings: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -590,6 +590,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
     }),
+
   inviteUserToProject: protectedProcedure
     .input(
       z.object({
@@ -619,7 +620,7 @@ export const projectRouter = createTRPCRouter({
       if (existingInvitation) {
         throw new Error("User is already a member of this project.");
       }
-      
+
       // Get project details for notification
       const project = await ctx.db.project.findUnique({
         where: {
@@ -680,8 +681,13 @@ export const projectRouter = createTRPCRouter({
         },
       });
 
-      if (currentUserAccess?.access !== "FULL_ACCESS" && currentUserAccess?.access !== "OWNER") {
-        throw new Error("You do not have permission to update members' access.");
+      if (
+        currentUserAccess?.access !== "FULL_ACCESS" &&
+        currentUserAccess?.access !== "OWNER"
+      ) {
+        throw new Error(
+          "You do not have permission to update members' access.",
+        );
       }
 
       const updateUserAccess = await ctx.db.userToProject.findFirst({
@@ -725,7 +731,10 @@ export const projectRouter = createTRPCRouter({
         },
       });
 
-      if (currentUserAccess?.access !== "FULL_ACCESS" && currentUserAccess?.access !== "OWNER") {
+      if (
+        currentUserAccess?.access !== "FULL_ACCESS" &&
+        currentUserAccess?.access !== "OWNER"
+      ) {
         throw new Error("You do not have permission to remove members.");
       }
 
@@ -764,12 +773,9 @@ export const projectRouter = createTRPCRouter({
               },
             },
           },
-          orderBy: [
-            { status: 'asc' },
-            { createdAt: 'desc' },
-          ],
+          orderBy: [{ status: "asc" }, { createdAt: "desc" }],
         });
-        
+
         // Get inviter details for pending invitations
         const membersWithInviterDetails = await Promise.all(
           members.map(async (member) => {
@@ -781,12 +787,12 @@ export const projectRouter = createTRPCRouter({
               return { ...member, inviter };
             }
             return member;
-          })
+          }),
         );
-        
+
         return membersWithInviterDetails;
       } catch (error) {
-        console.error('Error in getTeamMembers:', error);
+        console.error("Error in getTeamMembers:", error);
         return [];
       }
     }),
@@ -819,7 +825,9 @@ export const projectRouter = createTRPCRouter({
 
       // Check if the current user is the one being invited
       if (invitation.userId !== ctx.user.userId) {
-        throw new Error("You are not authorized to respond to this invitation.");
+        throw new Error(
+          "You are not authorized to respond to this invitation.",
+        );
       }
 
       // Check if the invitation is still pending
@@ -849,7 +857,7 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
-      
+
       return updatedInvitation;
 
       // TODO: Send notification to the project owner/inviter
@@ -901,84 +909,83 @@ export const projectRouter = createTRPCRouter({
         });
 
         if (!invitation) {
-          throw new Error("Invitation not found or you don't have permission to view it.");
+          throw new Error(
+            "Invitation not found or you don't have permission to view it.",
+          );
         }
 
         return invitation;
       } catch (error) {
-        console.error('Error in getInvitationById:', error);
+        console.error("Error in getInvitationById:", error);
         throw error;
       }
     }),
 
-  getPendingInvitationCount: protectedProcedure
-    .query(async ({ ctx }) => {
-      try {
-        const count = await ctx.db.userToProject.count({
-          where: {
-            userId: ctx.user.userId!,
-            status: "PENDING",
-          },
-        });
-        return count;
-      } catch (error) {
-        console.error('Error in getPendingInvitationCount:', error);
-        return 0;
-      }
-    }),
+  getPendingInvitationCount: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const count = await ctx.db.userToProject.count({
+        where: {
+          userId: ctx.user.userId!,
+          status: "PENDING",
+        },
+      });
+      return count;
+    } catch (error) {
+      console.error("Error in getPendingInvitationCount:", error);
+      return 0;
+    }
+  }),
 
-  getMyInvitations: protectedProcedure
-    .query(async ({ ctx }) => {
-      try {
-        // Get pending invitations for the current user
-        return await ctx.db.userToProject.findMany({
-          where: {
-            userId: ctx.user.userId!,
-            status: "PENDING",
-          },
-          include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-                githubUrl: true,
-                createdAt: true,
-                userToProjects: {
-                  select: {
-                    user: {
-                      select: {
-                        name: true,
-                        email: true,
-                        image: true,
-                      },
+  getMyInvitations: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      return await ctx.db.userToProject.findMany({
+        where: {
+          userId: ctx.user.userId!,
+          status: "PENDING",
+        },
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
+              githubUrl: true,
+              createdAt: true,
+              userToProjects: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                      image: true,
                     },
-                    access: true,
-                    status: true,
                   },
-                  where: {
-                    access: "OWNER",
-                  },
-                  take: 1,
+                  access: true,
+                  status: true,
                 },
-              },
-            },
-            user: {
-              select: {
-                name: true,
-                email: true,
-                image: true,
+                where: {
+                  access: "OWNER",
+                },
+                take: 1,
               },
             },
           },
-          orderBy: {
-            createdAt: 'desc',
+          user: {
+            select: {
+              name: true,
+              email: true,
+              image: true,
+            },
           },
-        });
-      } catch (error) {
-        console.error('Error in getMyInvitations:', error);
-        return [];
-      }
-    }),
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+    } catch (error) {
+      console.error("Error in getMyInvitations:", error);
+      return [];
+    }
+  }),
 
   getMyCredits: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.db.user.findUnique({
@@ -1000,13 +1007,11 @@ export const projectRouter = createTRPCRouter({
       },
     });
 
-    // Default values
     let hasPrivateRepoAccess = false;
     let isConnected = false;
     let hasValidToken = false;
     let hasValidInstallation = false;
 
-    // Check if GitHub account exists
     if (!githubAccount) {
       console.log("No GitHub account found for user");
       return {
@@ -1018,23 +1023,21 @@ export const projectRouter = createTRPCRouter({
       };
     }
 
-    // Check if token exists and is valid
     if (githubAccount.gitToken) {
       try {
         const octokit = new Octokit({
           auth: githubAccount.gitToken,
         });
-        
-        // Test token by trying to get user info
+
         const { data: userInfo } = await octokit.rest.users.getAuthenticated();
         hasValidToken = !!userInfo.login;
-        
-        // Check for private repo access
-        const { data: repos } = await octokit.rest.repos.listForAuthenticatedUser({
-          visibility: "private",
-          per_page: 1,
-          affiliation: "owner,collaborator",
-        });
+
+        const { data: repos } =
+          await octokit.rest.repos.listForAuthenticatedUser({
+            visibility: "private",
+            per_page: 1,
+            affiliation: "owner,collaborator",
+          });
         hasPrivateRepoAccess = repos.length > 0;
       } catch (error) {
         console.error("Error checking GitHub token validity:", error);
@@ -1043,26 +1046,28 @@ export const projectRouter = createTRPCRouter({
       }
     }
 
-    // Check if installation ID exists and is valid
     if (githubAccount.installationId) {
       try {
-        // Generate a JWT for the GitHub App
-        const privateKey = process.env.GITHUB_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        const privateKey = process.env.GITHUB_PRIVATE_KEY?.replace(
+          /\\n/g,
+          "\n",
+        );
         if (process.env.GITHUB_APP_ID && privateKey) {
           const now = Math.floor(Date.now() / 1000);
           const payload = {
-            iat: now - 60,          // Issued at time (60 seconds in the past)
-            exp: now + (10 * 60),   // JWT expiration time (10 minutes from now)
+            iat: now - 60,
+            exp: now + 10 * 60,
             iss: process.env.GITHUB_APP_ID,
           };
 
-          const appToken = jwt.sign(payload, privateKey, { algorithm: 'RS256' });
+          const appToken = jwt.sign(payload, privateKey, {
+            algorithm: "RS256",
+          });
           const appOctokit = new Octokit({ auth: appToken });
 
-          // Test if installation ID is valid
           const { data: installationInfo } = await appOctokit.request(
             `GET /app/installations/${githubAccount.installationId}`,
-            { installation_id: Number(githubAccount.installationId) }
+            { installation_id: Number(githubAccount.installationId) },
           );
 
           hasValidInstallation = !!installationInfo.id;
@@ -1073,7 +1078,6 @@ export const projectRouter = createTRPCRouter({
       }
     }
 
-    // Consider connected if either token or installation is valid
     isConnected = hasValidToken || hasValidInstallation;
 
     return {
@@ -1098,42 +1102,49 @@ export const projectRouter = createTRPCRouter({
     }
 
     try {
-      // Check if we have an installation_id to filter repositories
       if (githubAccount?.installationId) {
-        console.log(`Fetching repositories for installation ID: ${githubAccount.installationId}`);
+        console.log(
+          `Fetching repositories for installation ID: ${githubAccount.installationId}`,
+        );
 
-        // 1. Generate a JWT for the GitHub App
-        const privateKey = process.env.GITHUB_PRIVATE_KEY?.replace(/\\n/g, '\n');
+        const privateKey = process.env.GITHUB_PRIVATE_KEY?.replace(
+          /\\n/g,
+          "\n",
+        );
         if (!process.env.GITHUB_APP_ID || !privateKey) {
-          throw new Error('GitHub App credentials are not configured in .env');
+          throw new Error("GitHub App credentials are not configured in .env");
         }
 
         const now = Math.floor(Date.now() / 1000);
         const payload = {
-          iat: now - 60,          // Issued at time (60 seconds in the past)
-          exp: now + (10 * 60),   // JWT expiration time (10 minutes from now)
+          iat: now - 60,
+          exp: now + 10 * 60,
           iss: process.env.GITHUB_APP_ID,
         };
 
-        const appToken = jwt.sign(payload, privateKey, { algorithm: 'RS256' });
+        const appToken = jwt.sign(payload, privateKey, { algorithm: "RS256" });
 
-        // 2. Exchange the JWT for an Installation Access Token
         const appOctokit = new Octokit({ auth: appToken });
 
         const { data: installationToken } = await appOctokit.request(
           `POST /app/installations/${githubAccount.installationId}/access_tokens`,
           {
-            installation_id: Number(githubAccount.installationId)
-          }
+            installation_id: Number(githubAccount.installationId),
+          },
         );
 
-        // 3. Use the Installation Access Token to fetch repositories
-        const installationOctokit = new Octokit({ auth: installationToken.token });
+        const installationOctokit = new Octokit({
+          auth: installationToken.token,
+        });
 
-        const { data: installationRepos } = await installationOctokit.request('GET /installation/repositories');
+        const { data: installationRepos } = await installationOctokit.request(
+          "GET /installation/repositories",
+        );
 
-        console.log(`Found ${installationRepos.repositories.length} repositories for installation ${githubAccount.installationId}`);
-        
+        console.log(
+          `Found ${installationRepos.repositories.length} repositories for installation ${githubAccount.installationId}`,
+        );
+
         return {
           repositories: installationRepos.repositories.map((repo: any) => ({
             id: repo.id,
@@ -1143,11 +1154,11 @@ export const projectRouter = createTRPCRouter({
             isPrivate: repo.private,
           })),
         };
-
       } else {
-        // Fallback to fetching all repositories if no installation_id is available
-        console.log("No installation_id found, fetching all user's accessible repositories");
-        
+        console.log(
+          "No installation_id found, fetching all user's accessible repositories",
+        );
+
         const userOctokit = new Octokit({
           auth: githubAccount.gitToken,
         });
@@ -1163,7 +1174,7 @@ export const projectRouter = createTRPCRouter({
         const accessibleRepos = userRepos.filter((repo) => {
           return repo.permissions?.admin || repo.permissions?.push;
         });
-        
+
         return {
           repositories: accessibleRepos.map((repo) => ({
             id: repo.id,
@@ -1180,7 +1191,6 @@ export const projectRouter = createTRPCRouter({
     }
   }),
 
-  // Check if user has access to a project
   hasProjectAccess: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -1241,7 +1251,7 @@ export const projectRouter = createTRPCRouter({
           credits: true,
         },
       });
-      
+
       const userId = ctx.user.userId!;
       const allBranch = await getAllBranches(input.githubUrl, userId);
       return {

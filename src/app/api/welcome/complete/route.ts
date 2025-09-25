@@ -3,7 +3,6 @@ import { auth } from "@/lib/auth"
 import { markWelcomeComplete } from "@/lib/welcome-utils"
 
 export async function POST(request: NextRequest) {
-  // Get the session using the auth API
   const session = await auth.api.getSession({
     headers: request.headers
   })
@@ -13,18 +12,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Mark the welcome flow as completed in the database
     await markWelcomeComplete(session.user.id)
     
-    // Create a response with success message
     const response = NextResponse.json({ success: true })
     
-    // Also set a cookie as a fallback mechanism
     response.cookies.set({
       name: "welcome_completed",
       value: "true",
       path: "/",
-      maxAge: 60 * 60 * 24 * 365, // 1 year
+      maxAge: 60 * 60 * 24 * 365,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax"

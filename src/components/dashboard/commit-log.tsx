@@ -50,7 +50,6 @@ const CommitLog = () => {
     },
   );
 
-
   const uniqueBranches = useMemo(() => {
     if (!data?.commits) return [];
     const branches = new Set(
@@ -71,20 +70,17 @@ const CommitLog = () => {
     return ["all", ...Array.from(authors).sort()];
   }, [data?.commits]);
 
-  // Filter by Commit Message Type (still done client-side since API doesn't support it)
   const filteredCommits = useMemo(() => {
     if (!data?.commits) return [];
 
     let currentFiltered = data.commits;
 
-    // Filter by Commit Message Type (only client-side filter we still need)
     if (selectedMessageType !== "all") {
       currentFiltered = currentFiltered.filter((commit) => {
         const lowerCaseMessage = commit.commitMessage.toLowerCase();
         if (selectedMessageType === "merge-pr") {
           return lowerCaseMessage.startsWith("merge pull request");
         } else if (selectedMessageType === "pull-request") {
-          // This will also catch "Merge pull request" so "merge-pr" should be checked first
           return lowerCaseMessage.includes("pull request");
         } else if (selectedMessageType === "commit") {
           return (
@@ -92,26 +88,21 @@ const CommitLog = () => {
             !lowerCaseMessage.includes("pull request")
           );
         }
-        return true; // Should not happen with "all" check earlier, but for safety
+        return true;
       });
     }
 
     return currentFiltered;
   }, [data?.commits, selectedMessageType]);
 
-  // Get total pages from API response
   const totalPages = useMemo(() => {
     if (!data?.pagination) return 1;
     return data.pagination.totalPages;
   }, [data?.pagination]);
 
-  // Use the filtered commits for message type filtering
-  // (or all commits from API if no message type filter)
   const currentCommits = useMemo(() => {
     return filteredCommits;
   }, [filteredCommits]);
-
-  // Handle page changes
   const goToNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
@@ -124,12 +115,9 @@ const CommitLog = () => {
     }
   };
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedBranch, selectedAuthor, selectedMessageType]);
-
-  // Effect to reset filters and pagination when projectId changes
   useEffect(() => {
     setSelectedBranch("all");
     setSelectedAuthor("all");
@@ -140,25 +128,19 @@ const CommitLog = () => {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-gray-100 bg-white p-6 shadow-xl">
-        {/* Header Skeleton */}
         <div className="mb-6 flex animate-pulse flex-col items-start justify-end gap-4 sm:flex-row sm:items-center">
           <div className="flex flex-col items-start space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
             <div className="h-6 w-28 rounded bg-gray-200"></div>{" "}
-            {/* Filter label skeleton */}
             <div className="h-10 w-full rounded bg-gray-200 sm:w-[200px]"></div>{" "}
-            {/* Select trigger skeleton */}
             <div className="h-10 w-full rounded bg-gray-200 sm:w-[200px]"></div>{" "}
-            {/* New Select trigger skeleton */}
             <div className="h-10 w-full rounded bg-gray-200 sm:w-[200px]"></div>{" "}
-            {/* New Select trigger skeleton */}
           </div>
         </div>
 
-        {/* Commit List Skeleton (simulate 3-4 commits) */}
         <ul className="space-y-6 md:space-y-8">
           {[1, 2, 3].map(
             (
-              i, // Simulate 3 commit items
+              i,
             ) => (
               <li
                 key={i}
@@ -169,42 +151,31 @@ const CommitLog = () => {
                 </div>
                 <div className="relative z-10 flex-none">
                   <div className="size-10 rounded-full bg-gray-200 sm:size-12"></div>{" "}
-                  {/* Avatar skeleton */}
                 </div>
                 <div className="flex-auto rounded-lg bg-gray-100 p-4 shadow-sm ring-1 ring-gray-100 ring-inset sm:p-5">
                   <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-x-4">
                     <div className="flex flex-grow flex-col">
                       <div className="mb-1 h-6 w-3/4 rounded bg-gray-200"></div>{" "}
-                      {/* Commit message skeleton */}
                       <div className="h-4 w-1/2 rounded bg-gray-200"></div>{" "}
-                      {/* Author info skeleton */}
                     </div>
                     <div className="mt-2 flex flex-shrink-0 flex-col items-start text-left sm:mt-0 sm:items-end sm:text-right">
                       <div className="mb-1 h-6 w-20 rounded bg-gray-200"></div>{" "}
-                      {/* Badge skeleton */}
                       <div className="h-4 w-24 rounded bg-gray-200"></div>{" "}
-                      {/* Date skeleton */}
                     </div>
                   </div>
                   <div className="mt-3 h-24 rounded-md bg-gray-200"></div>{" "}
-                  {/* Summary skeleton */}
                 </div>
               </li>
             ),
           )}
         </ul>
 
-        {/* Pagination Skeleton */}
         <div className="mt-10 flex animate-pulse flex-col items-center justify-between space-y-4 rounded-b-lg border-t border-gray-200 bg-gray-50 p-4 sm:flex-row sm:justify-end sm:space-y-0 sm:space-x-4">
           <div className="h-6 w-48 rounded bg-gray-200"></div>{" "}
-          {/* Pagination text skeleton */}
           <div className="flex items-center space-x-2">
             <div className="h-9 w-24 rounded bg-gray-200"></div>{" "}
-            {/* Previous button skeleton */}
             <div className="h-6 w-16 rounded bg-gray-200"></div>{" "}
-            {/* Page number skeleton */}
             <div className="h-9 w-24 rounded bg-gray-200"></div>{" "}
-            {/* Next button skeleton */}
           </div>
         </div>
       </div>
@@ -235,7 +206,6 @@ const CommitLog = () => {
     <div className="rounded-lg border border-gray-100 bg-white p-6 shadow-xl">
       <div className="mb-6 flex flex-col items-start justify-end gap-4 md:flex-row md:items-center">
         <div className="flex flex-col flex-wrap items-start gap-2 space-y-2 md:flex-row md:items-center md:space-y-0 md:space-x-4">
-          {/* Branch Filter */}
           <div className="flex flex-col space-x-2">
             <span className="text-base font-medium whitespace-nowrap text-gray-700">
               <GitBranch className="mr-1 inline-block size-4 text-gray-500" />
@@ -259,7 +229,6 @@ const CommitLog = () => {
             </Select>
           </div>
 
-          {/* Author Filter */}
           <div className="flex flex-col space-x-2">
             <span className="text-base font-medium whitespace-nowrap text-gray-700">
               <UserRound className="mr-1 inline-block size-4 text-gray-500" />
@@ -283,7 +252,6 @@ const CommitLog = () => {
             </Select>
           </div>
 
-          {/* Commit Message Type Filter */}
           <div className="flex flex-col space-x-2">
             <span className="text-base font-medium whitespace-nowrap text-gray-700">
               <MessageSquareText className="mr-1 inline-block size-4 text-gray-500" />
@@ -373,16 +341,6 @@ const CommitLog = () => {
               <div className="flex-auto rounded-lg bg-gray-50 p-4 shadow-sm ring-1 ring-gray-100 transition-all duration-300 ring-inset group-hover:shadow-lg group-hover:ring-blue-200 sm:p-5">
                 <div className="mb-2 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center sm:gap-x-4">
                   <div className="flex flex-grow flex-col">
-                    {/* <Link
-                                            target="_blank"
-                                            href={`${project?.githubUrl}/commit/${commit.commitHash}`}
-                                            className="inline-flex items-center text-base sm:text-lg font-semibold text-blue-700 hover:text-blue-900 hover:underline transition-colors duration-200"
-                                            title="View commit on GitHub"
-                                        >
-                                            {commit.commitMessage.split('\n')[0]}
-                                            <ExternalLink className="ml-2 size-4 sm:size-5 text-blue-500 flex-shrink-0" />
-                                        </Link> */}
-
                     <Link
                       href={`/projects/${projectId}/commits/${commit.commitHash}`}
                       className="inline-flex items-center text-base font-semibold text-blue-700 transition-colors duration-200 hover:text-blue-900 hover:underline sm:text-lg"
@@ -412,7 +370,8 @@ const CommitLog = () => {
 
                       <time
                         dateTime={
-                          typeof commit.commitDate === 'object' && commit.commitDate !== null
+                          typeof commit.commitDate === "object" &&
+                          commit.commitDate !== null
                             ? new Date(commit.commitDate).toISOString()
                             : String(commit.commitDate)
                         }

@@ -1,14 +1,13 @@
 // api/webhook/stripe
 
 import { db } from "@/server/db"
-import { error } from "console"
 import { headers } from "next/headers"
-import { NextResponse, NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2025-06-30.basil",
+    apiVersion: "2025-08-27.basil",
 })
 
 export async function POST(request: Request) {
@@ -24,8 +23,6 @@ export async function POST(request: Request) {
     }
 
     const session = event.data.object as Stripe.Checkout.Session
-
-    console.log(event.type)
 
     if (event.type === 'checkout.session.completed') {
         const credits = Number(session.metadata?.["credits"])

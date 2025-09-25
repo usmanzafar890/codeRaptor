@@ -1,12 +1,9 @@
 import { Octokit } from "octokit";
 import { db } from "@/server/db"
 import { aiSummariseCommit } from "./gemini";
-import { auth } from "./auth";
-import { headers } from "next/headers";
 
 
 async function getAuthenticatedOctokit(userId: string) {
-    // Fetch the user's GitHub account from the database using their userId
     const githubAccount = await db.account.findFirst({
         where: {
             userId: userId,
@@ -14,22 +11,16 @@ async function getAuthenticatedOctokit(userId: string) {
         }
     });
 
-    // If no account or access token is found, throw an error
     if (!githubAccount || !githubAccount.gitToken) {
         return new Octokit({
             auth: process.env.GITHUB_TOKEN,
         });
     }
 
-    // Create a new Octokit instance authenticated with the user's token
     return new Octokit({
         auth: githubAccount.gitToken
     });
 }
-
-// const octokit = new Octokit({
-//     auth: process.env.GITHUB_TOKEN,
-// });
 
 
 type Response = {
@@ -62,7 +53,7 @@ export const getCommitHashes = async (githubUrl: string, branchName?: string, us
     const { data } = await octokit.rest.repos.listCommits({
         owner,
         repo,
-        sha: actualBranch // Use the specified branch
+        sha: actualBranch
     })
     const sortedCommits = data.sort((a: any, b: any) => new Date(b.commit.author.date).getTime() - new Date(a.commit.author.date).getTime()) as any[]
 
@@ -82,19 +73,16 @@ export const pollCommits = async (projectId: string, userId: string) => {
     const { project, githubUrl } = await fetchProjectGithubUrl(projectId)
     const [owner, repo] = githubUrl.split("/").slice(-2);
 
-    // Find active branches for this project
     const activeBranches = await (db as any).projectBranch.findMany({
         where: {
             projectId: projectId,
-            isActive: true // Using isActive instead of isEnable for compatibility
+            isActive: true
         }
     });
 
     let allCommits: any[] = [];
 
-    // If there are active branches, poll commits from each
     if (activeBranches.length > 0) {
-        // Process each active branch
         for (const branch of activeBranches) {
             const branchCommitHashes = await getCommitHashes(githubUrl, branch.name, userId);
             const unprocessedBranchCommits = await filterUnprocessedCommits(projectId, branchCommitHashes);
@@ -131,7 +119,6 @@ export const pollCommits = async (projectId: string, userId: string) => {
             }
         }
     } else {
-        // If no active branches, fall back to default behavior (main branch)
         const commitHashes = await getCommitHashes(githubUrl, undefined, userId);
         const unprocessedCommits = await filterUnprocessedCommits(projectId, commitHashes);
 

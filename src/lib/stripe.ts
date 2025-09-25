@@ -6,7 +6,7 @@ import Stripe from "stripe"
 // C:\Users\khans\Downloads\stripe_1.28.0_windows_x86_64\stripe.exe listen --forward-to localhost:3000/api/webhook/stripe
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2025-06-30.basil",
+    apiVersion: "2025-08-27.basil",
 })
 
 export async function createCheckoutSession(credits: number, userId: string) {

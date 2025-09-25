@@ -1,9 +1,6 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
 import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import SignOutButton from "@/components/auth/sign-out-button";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { NavUser } from "@/components/nav-user";
 import InvitationNotificationsWrapper from "@/components/layout/invitation-notifications-wrapper";
 
