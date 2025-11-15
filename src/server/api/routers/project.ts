@@ -1101,8 +1101,9 @@ export const projectRouter = createTRPCRouter({
       return { repositories: [] };
     }
 
-    try {
-      if (githubAccount?.installationId) {
+    // Try installation approach first if installationId exists
+    if (githubAccount?.installationId) {
+      try {
         console.log(
           `Fetching repositories for installation ID: ${githubAccount.installationId}`,
         );
@@ -1154,37 +1155,49 @@ export const projectRouter = createTRPCRouter({
             isPrivate: repo.private,
           })),
         };
-      } else {
-        console.log(
-          "No installation_id found, fetching all user's accessible repositories",
+      } catch (error) {
+        console.error(
+          `Error fetching repositories via installation ID ${githubAccount.installationId}:`,
+          error,
         );
-
-        const userOctokit = new Octokit({
-          auth: githubAccount.gitToken,
-        });
-
-        const { data: userRepos } =
-          await userOctokit.rest.repos.listForAuthenticatedUser({
-            visibility: "all",
-            sort: "updated",
-            per_page: 100,
-            affiliation: "owner,collaborator",
-          });
-
-        const accessibleRepos = userRepos.filter((repo) => {
-          return repo.permissions?.admin || repo.permissions?.push;
-        });
-
-        return {
-          repositories: accessibleRepos.map((repo) => ({
-            id: repo.id,
-            name: repo.name,
-            fullName: repo.full_name,
-            url: repo.html_url,
-            isPrivate: repo.private,
-          })),
-        };
+        console.log(
+          "Falling back to user's personal access token for fetching repositories",
+        );
+        // Fall through to use personal access token
       }
+    }
+
+    // Fallback to user's personal access token
+    try {
+      console.log(
+        "Fetching all user's accessible repositories using personal access token",
+      );
+
+      const userOctokit = new Octokit({
+        auth: githubAccount.gitToken,
+      });
+
+      const { data: userRepos } =
+        await userOctokit.rest.repos.listForAuthenticatedUser({
+          visibility: "all",
+          sort: "updated",
+          per_page: 100,
+          affiliation: "owner,collaborator",
+        });
+
+      const accessibleRepos = userRepos.filter((repo) => {
+        return repo.permissions?.admin || repo.permissions?.push;
+      });
+
+      return {
+        repositories: accessibleRepos.map((repo) => ({
+          id: repo.id,
+          name: repo.name,
+          fullName: repo.full_name,
+          url: repo.html_url,
+          isPrivate: repo.private,
+        })),
+      };
     } catch (error) {
       console.error("Error fetching accessible repositories:", error);
       return { repositories: [] };
