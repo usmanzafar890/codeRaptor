@@ -96,8 +96,8 @@ export const projectRouter = createTRPCRouter({
       const fileCount = await checkCredits(
         input.githubUrl,
         githubAccount?.gitToken ||
-          input.githubToken ||
-          process.env.GITHUB_TOKEN,
+        input.githubToken ||
+        process.env.GITHUB_TOKEN,
       );
       console.log("🚀 ~ fileCount:", fileCount);
       if (currentCredits < fileCount) {
@@ -140,8 +140,8 @@ export const projectRouter = createTRPCRouter({
         project.id,
         input.githubUrl,
         githubAccount?.gitToken ||
-          input.githubToken ||
-          process.env.GITHUB_TOKEN,
+        input.githubToken ||
+        process.env.GITHUB_TOKEN,
       );
       await pollCommits(project.id, ctx.user.userId!).catch((error) => {
         console.error("Error polling commits after return:", error);
@@ -1038,6 +1038,7 @@ export const projectRouter = createTRPCRouter({
             per_page: 1,
             affiliation: "owner,collaborator",
           });
+        console.log("🚀 ~ repos:", repos)
         hasPrivateRepoAccess = repos.length > 0;
       } catch (error) {
         console.error("Error checking GitHub token validity:", error);
@@ -1075,11 +1076,11 @@ export const projectRouter = createTRPCRouter({
       } catch (error) {
         console.error("Error checking GitHub installation validity:", error);
         hasValidInstallation = false;
+        hasValidToken = false;
       }
     }
 
     isConnected = hasValidToken || hasValidInstallation;
-
     return {
       isConnected,
       accountDetails: githubAccount,
@@ -1101,9 +1102,9 @@ export const projectRouter = createTRPCRouter({
       return { repositories: [] };
     }
 
-    // Try installation approach first if installationId exists
-    if (githubAccount?.installationId) {
-      try {
+    try {
+      if (githubAccount?.installationId) {
+
         console.log(
           `Fetching repositories for installation ID: ${githubAccount.installationId}`,
         );
@@ -1155,49 +1156,53 @@ export const projectRouter = createTRPCRouter({
             isPrivate: repo.private,
           })),
         };
-      } catch (error) {
-        console.error(
-          `Error fetching repositories via installation ID ${githubAccount.installationId}:`,
-          error,
-        );
+      } else {
+
+
+
+
         console.log(
-          "Falling back to user's personal access token for fetching repositories",
+          "No installation_id found, fetching all user's accessible repositories",
         );
-        // Fall through to use personal access token
-      }
-    }
 
-    // Fallback to user's personal access token
-    try {
-      console.log(
-        "Fetching all user's accessible repositories using personal access token",
-      );
 
-      const userOctokit = new Octokit({
-        auth: githubAccount.gitToken,
-      });
 
-      const { data: userRepos } =
-        await userOctokit.rest.repos.listForAuthenticatedUser({
-          visibility: "all",
-          sort: "updated",
-          per_page: 100,
-          affiliation: "owner,collaborator",
+
+        const userOctokit = new Octokit({
+          auth: githubAccount.gitToken,
         });
 
-      const accessibleRepos = userRepos.filter((repo) => {
-        return repo.permissions?.admin || repo.permissions?.push;
-      });
 
-      return {
-        repositories: accessibleRepos.map((repo) => ({
-          id: repo.id,
-          name: repo.name,
-          fullName: repo.full_name,
-          url: repo.html_url,
-          isPrivate: repo.private,
-        })),
-      };
+
+        const { data: userRepos } =
+          await userOctokit.rest.repos.listForAuthenticatedUser({
+            visibility: "all",
+            sort: "updated",
+            per_page: 100,
+            affiliation: "owner,collaborator",
+          });
+
+        const accessibleRepos = userRepos.filter((repo) => {
+          return repo.permissions?.admin || repo.permissions?.push;
+
+
+
+
+        });
+
+        return {
+          repositories: accessibleRepos.map((repo) => ({
+            id: repo.id,
+            name: repo.name,
+            fullName: repo.full_name,
+            url: repo.html_url,
+            isPrivate: repo.private,
+          })),
+        };
+      }
+
+
+
     } catch (error) {
       console.error("Error fetching accessible repositories:", error);
       return { repositories: [] };
@@ -1245,8 +1250,8 @@ export const projectRouter = createTRPCRouter({
         fileCount = await checkCredits(
           input.githubUrl,
           githubAccount.gitToken ||
-            input.githubToken ||
-            process.env.GITHUB_TOKEN,
+          input.githubToken ||
+          process.env.GITHUB_TOKEN,
         );
       }
 
