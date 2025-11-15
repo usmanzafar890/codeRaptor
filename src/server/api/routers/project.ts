@@ -1076,7 +1076,7 @@ export const projectRouter = createTRPCRouter({
       } catch (error) {
         console.error("Error checking GitHub installation validity:", error);
         hasValidInstallation = false;
-        // hasValidToken = false;
+        hasValidToken = false;
       }
     }
 
