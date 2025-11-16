@@ -70,7 +70,23 @@ export const loadGithubRepo = async (githubUrl: string, githubToken?: string) =>
     })
 
     const docs = await loader.load()
-    return docs
+    // Filter to speed up: ignore binaries/large files and vendor folders
+    const IGNORED_EXTS = [
+        '.png','.jpg','.jpeg','.gif','.webp','.svg','.bmp',
+        '.mp3','.mp4','.wav','.ogg','.mov','.mkv',
+        '.pdf','.doc','.docx','.xls','.xlsx',
+        '.zip','.tar','.gz','.7z','.rar',
+        '.lock','.bin','.exe','.dll','.so'
+    ]
+    const isIgnored = (path?: string) => {
+        if (!path) return false
+        const lower = path.toLowerCase()
+        if (lower.includes('node_modules/') || lower.includes('dist/') || lower.includes('build/')) return true
+        return IGNORED_EXTS.some(ext => lower.endsWith(ext))
+    }
+    const filtered = docs.filter(d => !isIgnored(d.metadata?.source) && (d.pageContent?.length || 0) > 0 && (d.pageContent?.length || 0) < 50_000)
+    // Cap total files to speed up
+    return filtered.slice(0, 200)
 }
 
 
@@ -78,7 +94,7 @@ export const indexGithubRepo = async (projectId: string, githubUrl: string, gith
     const docs = await loadGithubRepo(githubUrl, githubToken)
 
     // Process in small batches to avoid rate limits and DB pool timeouts
-    const batchSize = 5
+    const batchSize = 10
     for (let i = 0; i < docs.length; i += batchSize) {
         const batch = docs.slice(i, i + batchSize)
         const results = await generateEmbeddings(batch)
@@ -106,8 +122,8 @@ export const indexGithubRepo = async (projectId: string, githubUrl: string, gith
             WHERE "id" = ${sourceCodeEmbedding.id}
             `
 
-            // Sleep ~4s between files to keep under Gemini free RPS limits
-            await new Promise(r => setTimeout(r, 4000))
+            // Shorter spacing to improve throughput
+            await new Promise(r => setTimeout(r, 800))
         }
     }
 }
@@ -120,27 +136,36 @@ const generateEmbeddings = async (docs: Document[]) => {
         fileName: string
     } | null> = []
 
-    for (const doc of docs) {
+    // Limited concurrency worker pool (3) for speed with control
+    const concurrency = 3
+    let idx = 0
+
+    async function worker() {
+        while (idx < docs.length) {
+            const current = idx++
+            const doc = docs[current]
         try {
             const summary = await summariseCode(doc)
             if (!summary || summary.trim().length === 0) {
-                results.push(null)
+                results[current] = null
             } else {
                 const embedding = await generateEmbedding(summary)
-                results.push({
+                results[current] = {
                     summary: sanitizeText(summary),
                     embedding,
                     sourceCode: sanitizeText(JSON.parse(JSON.stringify(doc.pageContent))),
                     fileName: doc.metadata.source,
-                })
+                }
             }
         } catch (err) {
             console.error("Failed to generate summary/embedding for", doc.metadata?.source, err)
-            results.push(null)
+            results[current] = null
         }
-        // Sleep ~4s between Gemini requests
-        await new Promise(r => setTimeout(r, 4000))
+            // Minimal spacing
+            await new Promise(r => setTimeout(r, 500))
+        }
     }
 
+    await Promise.all(Array.from({ length: Math.min(concurrency, docs.length) }, () => worker()))
     return results
 }

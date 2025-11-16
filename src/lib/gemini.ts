@@ -64,7 +64,7 @@ export const aiSummariseCommit = async (diff: string) => {
 export async function summariseCode(doc: Document) {
     console.log("getting summary for", doc.metadata.source);
     try {
-    const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
+    const code = doc.pageContent.slice(0, 10000); // Tighter limit for lower latency
     const text = await generateWithRetry([
         `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects`,
         `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
