@@ -88,16 +88,13 @@ export const pollCommits = async (projectId: string, userId: string) => {
             const unprocessedBranchCommits = await filterUnprocessedCommits(projectId, branchCommitHashes);
 
             if (unprocessedBranchCommits.length > 0) {
-                const summaryResponses = await Promise.allSettled(unprocessedBranchCommits.map(commit => {
-                    return summariseCommit(owner!, repo!, commit.commitHash, userId);
-                }));
-
-                const summaries = summaryResponses.map((response) => {
-                    if (response.status === 'fulfilled') {
-                        return response.value as string;
-                    }
-                    return "";
-                });
+                const summaries: string[] = [];
+                for (const commit of unprocessedBranchCommits) {
+                    const s = await summariseCommit(owner!, repo!, commit.commitHash, userId);
+                    summaries.push(s);
+                    // Avoid rate limits on Gemini
+                    await new Promise(r => setTimeout(r, 5000));
+                }
 
                 const branchCommits = await db.commit.createMany({
                     data: summaries.map((summary, index) => {
@@ -123,16 +120,13 @@ export const pollCommits = async (projectId: string, userId: string) => {
         const unprocessedCommits = await filterUnprocessedCommits(projectId, commitHashes);
 
         if (unprocessedCommits.length > 0) {
-            const summaryResponses = await Promise.allSettled(unprocessedCommits.map(commit => {
-                return summariseCommit(owner!, repo!, commit.commitHash, userId);
-            }));
-
-            const summaries = summaryResponses.map((response) => {
-                if (response.status === 'fulfilled') {
-                    return response.value as string;
-                }
-                return "";
-            });
+            const summaries: string[] = [];
+            for (const commit of unprocessedCommits) {
+                const s = await summariseCommit(owner!, repo!, commit.commitHash, userId);
+                summaries.push(s);
+                // Avoid rate limits on Gemini
+                await new Promise(r => setTimeout(r, 5000));
+            }
 
             const commits = await db.commit.createMany({
                 data: summaries.map((summary, index) => {

@@ -105,27 +105,42 @@ export const indexGithubRepo = async (projectId: string, githubUrl: string, gith
             SET "summaryEmbedding" = ${item.embedding}::vector
             WHERE "id" = ${sourceCodeEmbedding.id}
             `
+
+            // Sleep ~4s between files to keep under Gemini free RPS limits
+            await new Promise(r => setTimeout(r, 4000))
         }
     }
 }
 
 const generateEmbeddings = async (docs: Document[]) => {
-    return await Promise.all(docs.map(async doc => {
+    const results: Array<{
+        summary: string,
+        embedding: number[],
+        sourceCode: string,
+        fileName: string
+    } | null> = []
+
+    for (const doc of docs) {
         try {
             const summary = await summariseCode(doc)
             if (!summary || summary.trim().length === 0) {
-                return null
-            }
-            const embedding = await generateEmbedding(summary)
-            return {
-                summary: sanitizeText(summary),
-                embedding,
-                sourceCode: sanitizeText(JSON.parse(JSON.stringify(doc.pageContent))),
-                fileName: doc.metadata.source,
+                results.push(null)
+            } else {
+                const embedding = await generateEmbedding(summary)
+                results.push({
+                    summary: sanitizeText(summary),
+                    embedding,
+                    sourceCode: sanitizeText(JSON.parse(JSON.stringify(doc.pageContent))),
+                    fileName: doc.metadata.source,
+                })
             }
         } catch (err) {
             console.error("Failed to generate summary/embedding for", doc.metadata?.source, err)
-            return null
+            results.push(null)
         }
-    }))
+        // Sleep ~4s between Gemini requests
+        await new Promise(r => setTimeout(r, 4000))
+    }
+
+    return results
 }

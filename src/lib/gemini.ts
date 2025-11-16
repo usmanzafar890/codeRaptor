@@ -4,11 +4,26 @@ import { Document } from "@langchain/core/documents";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
 
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms))
+
+async function generateWithRetry(parts: (string)[], retries = 1) {
+    try {
+        const response = await model.generateContent(parts)
+        return response.response.text()
+    } catch (err: any) {
+        if (retries <= 0) throw err
+        const retryAfter = Number(err?.response?.headers?.get?.('retry-after')) || 0
+        const backoffMs = retryAfter ? retryAfter * 1000 : 2000
+        await sleep(backoffMs)
+        return generateWithRetry(parts, retries - 1)
+    }
+}
+
 
 export const aiSummariseCommit = async (diff: string) => {
     // https://github.com/docker/genai-stack/commit/<commithash>.diff
     try {
-        const response = await model.generateContent([
+        const text = await generateWithRetry([
             `You are an expert programmer, and you are trying to summarize a git diff.
         Reminders about the git diff format:
         For every file, there are a few metadata lines, like (for example):
@@ -38,8 +53,8 @@ export const aiSummariseCommit = async (diff: string) => {
         Do not include parts of the example in your summary.
         It is given only as an example of appropriate comments.`,
             `Please summarize the following diff file: \n\n${diff}`,
-        ]);
-        return response.response.text();
+        ], 1);
+        return text;
     } catch (error) {
         // On quota/rate errors or any failure, skip summarization gracefully
         return "";
@@ -50,7 +65,7 @@ export async function summariseCode(doc: Document) {
     console.log("getting summary for", doc.metadata.source);
     try {
     const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
-    const response = await model.generateContent([
+    const text = await generateWithRetry([
         `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects`,
         `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
 Here is the code:
@@ -59,9 +74,9 @@ ${code}
 ---
         Give a summary no more than 100 words of the code above`,
         
-    ]);
+    ], 1);
 
-    return response.response.text()
+    return text
 } catch (error) {
 return ""
 }}
