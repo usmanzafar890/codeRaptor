@@ -12,7 +12,7 @@ export default async function OrganizationPage({ params }: { params: { id: strin
       redirect("/login");
     }
     return (
-      <OrganizationByIDView params={params}/>
+      <OrganizationByIDView id={params?.id} />
     )
   }
 

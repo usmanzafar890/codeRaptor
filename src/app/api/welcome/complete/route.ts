@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { markWelcomeComplete } from "@/lib/welcome-utils"
 
+export const runtime = "nodejs"
+
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({
     headers: request.headers
@@ -24,6 +26,14 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax"
+    })
+
+    // Clear the temporary "welcome_required" cookie if present
+    response.cookies.set({
+      name: "welcome_required",
+      value: "",
+      path: "/",
+      maxAge: 0
     })
     
     return response

@@ -65,7 +65,13 @@ export default function OrganizationCreateView({ params }: { params: { id: strin
   };
   
 
-  const { data: organization, isLoading, refetch } = api.organization.getOrganization.useQuery({ id: params.id });
+  const orgId = typeof params?.id === "string" ? params.id : "";
+  const isCreate = !orgId;
+  const { data: organization, isLoading, refetch, error: queryError } =
+    api.organization.getOrganization.useQuery(
+      { id: orgId },
+      { enabled: !!orgId }
+    );
   
   // Use useEffect instead of callbacks
   useEffect(() => {
@@ -80,11 +86,24 @@ export default function OrganizationCreateView({ params }: { params: { id: strin
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (error) {
+    if (queryError) {
+      setError(queryError.message);
+    } else if (error) {
       toast.error(`Error loading organization: ${error}`);
       router.push('/organizations');
     }
-  }, [error, router]);
+  }, [error, queryError, router]);
+
+  const createOrganization = api.organization.createOrganization.useMutation({
+    onSuccess: (org) => {
+      toast.success("Organization created successfully")
+      router.push(`/organizations/${org.id}`)
+    },
+    onError: (error) => {
+      toast.error(`Failed to create organization: ${error.message}`)
+      setIsSubmitting(false)
+    }
+  })
 
   const updateOrganization = api.organization.updateOrganization.useMutation({
     onSuccess: () => {
@@ -153,12 +172,20 @@ export default function OrganizationCreateView({ params }: { params: { id: strin
       return
     }
 
-    updateOrganization.mutate({
-      id: params.id,
-      name,
-      description: description.trim() || undefined,
-      logoUrl: logoUrl.trim() || undefined
-    })
+    if (isCreate) {
+      createOrganization.mutate({
+        name,
+        description: description.trim() || undefined,
+        logoUrl: logoUrl.trim() || undefined
+      })
+    } else {
+      updateOrganization.mutate({
+        id: params.id,
+        name,
+        description: description.trim() || undefined,
+        logoUrl: logoUrl.trim() || undefined
+      })
+    }
   }
 
   const handleDeleteOrganization = () => {
@@ -220,6 +247,74 @@ export default function OrganizationCreateView({ params }: { params: { id: strin
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
+      </div>
+    )
+  }
+
+  if (isCreate) {
+    return (
+      <div className="container py-8">
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Create Organization</CardTitle>
+            <CardDescription>Set up a new organization</CardDescription>
+          </CardHeader>
+          <form onSubmit={handleUpdateOrganization}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Organization Name <span className="text-red-500">*</span></Label>
+                <Input 
+                  id="name" 
+                  placeholder="Enter organization name" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isSubmitting}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea 
+                  id="description" 
+                  placeholder="Enter a brief description of your organization"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={isSubmitting}
+                  rows={4}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Input 
+                  id="logoUrl" 
+                  placeholder="https://example.com/logo.png"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  disabled={isSubmitting}
+                  type="url"
+                />
+              </div>
+            </CardContent>
+            
+            <CardFooter className="flex justify-end border-t pt-4">
+              <Button 
+                type="submit"
+                disabled={isSubmitting || !name.trim()}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Organization'
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
       </div>
     )
   }

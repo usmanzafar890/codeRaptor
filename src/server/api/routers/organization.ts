@@ -32,7 +32,7 @@ export const organizationRouter = createTRPCRouter({
   getOrganization: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const membership = await (ctx.db as any).OrganizationMember.findFirst({
+      const membership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: ctx.user.userId!,
           organizationId: input.id,
@@ -43,7 +43,7 @@ export const organizationRouter = createTRPCRouter({
         throw new Error("You don't have access to this organization");
       }
 
-      return await (ctx.db as any as any).organization.findUnique({
+      return await (ctx.db as any).organization.findUnique({
         where: {
           id: input.id,
         },
@@ -102,7 +102,7 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const membership = await (ctx.db as any).OrganizationMember.findFirst({
+      const membership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: ctx.user.userId!,
           organizationId: input.id,
@@ -118,7 +118,7 @@ export const organizationRouter = createTRPCRouter({
         );
       }
 
-      return await (ctx.db as any as any).organization.update({
+      return await (ctx.db as any).organization.update({
         where: {
           id: input.id,
         },
@@ -133,7 +133,7 @@ export const organizationRouter = createTRPCRouter({
   deleteOrganization: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const organization = await (ctx.db as any).Organization.findUnique({
+      const organization = await (ctx.db as any).organization.findUnique({
         where: {
           id: input.id,
         },
@@ -147,13 +147,13 @@ export const organizationRouter = createTRPCRouter({
         throw new Error("Only the owner can delete an organization");
       }
 
-      await (ctx.db as any as any).organizationMember.deleteMany({
+      await (ctx.db as any).organizationMember.deleteMany({
         where: {
           organizationId: input.id,
         },
       });
 
-      await (ctx.db as any as any).project.updateMany({
+      await (ctx.db as any).project.updateMany({
         where: {
           organizationId: input.id,
         },
@@ -162,7 +162,7 @@ export const organizationRouter = createTRPCRouter({
         },
       });
 
-      return await (ctx.db as any as any).organization.delete({
+      return await (ctx.db as any).organization.delete({
         where: {
           id: input.id,
         },
@@ -178,7 +178,7 @@ export const organizationRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const membership = await (ctx.db as any).OrganizationMember.findFirst({
+      const membership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: ctx.user.userId!,
           organizationId: input.organizationId,
@@ -204,9 +204,7 @@ export const organizationRouter = createTRPCRouter({
         throw new Error("User not found");
       }
 
-      const existingMembership = await (
-        ctx.db as any as any
-      ).organizationMember.findFirst({
+      const existingMembership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: user.id,
           organizationId: input.organizationId,
@@ -218,7 +216,7 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Add the user to the organization
-      return await (ctx.db as any as any).organizationMember.create({
+      return await (ctx.db as any).organizationMember.create({
         data: {
           userId: user.id,
           organizationId: input.organizationId,
@@ -237,7 +235,7 @@ export const organizationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if the user is an owner or admin
-      const membership = await (ctx.db as any).OrganizationMember.findFirst({
+      const membership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: ctx.user.userId!,
           organizationId: input.organizationId,
@@ -254,7 +252,7 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Check if the target user is the owner (cannot change owner's role)
-      const organization = await (ctx.db as any).Organization.findUnique({
+      const organization = await (ctx.db as any).organization.findUnique({
         where: {
           id: input.organizationId,
         },
@@ -269,7 +267,7 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Update the member's role
-      return await (ctx.db as any as any).organizationMember.update({
+      return await (ctx.db as any).organizationMember.update({
         where: {
           userId_organizationId: {
             userId: input.userId,
@@ -291,7 +289,7 @@ export const organizationRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if the user is an owner or admin
-      const membership = await (ctx.db as any).OrganizationMember.findFirst({
+      const membership = await (ctx.db as any).organizationMember.findFirst({
         where: {
           userId: ctx.user.userId!,
           organizationId: input.organizationId,
@@ -308,7 +306,7 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Check if the target user is the owner (cannot remove owner)
-      const organization = await (ctx.db as any as any).organization.findUnique(
+      const organization = await (ctx.db as any).organization.findUnique(
         {
           where: {
             id: input.organizationId,
@@ -325,7 +323,7 @@ export const organizationRouter = createTRPCRouter({
       }
 
       // Remove the member
-      return await (ctx.db as any as any).organizationMember.delete({
+      return await (ctx.db as any).organizationMember.delete({
         where: {
           userId_organizationId: {
             userId: input.userId,

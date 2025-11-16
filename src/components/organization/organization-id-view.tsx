@@ -33,7 +33,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
-export default function OrganizationByIDView({ params }: { params: { id: string } }) {
+type OrganizationByIDViewProps = { id: string } | { params: { id: string } };
+
+export default function OrganizationByIDView(props: OrganizationByIDViewProps) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState("")
@@ -65,7 +67,15 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
   };
   
 
-  const { data: organization, isLoading, refetch } = api.organization.getOrganization.useQuery({ id: params.id });
+  const orgId = "id" in props
+    ? (props.id || "")
+    : (props.params?.id || "");
+  const { data: organization, isLoading, refetch, error: queryError } =
+    api.organization.getOrganization.useQuery(
+      { id: orgId },
+      { enabled: !!orgId }
+    );
+  console.log("🚀 ~ OrganizationByIDView ~ organization:", organization)
   
   // Use useEffect instead of callbacks
   useEffect(() => {
@@ -80,11 +90,13 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (error) {
+    if (queryError) {
+      setError(queryError.message);
+    } else if (error) {
       toast.error(`Error loading organization: ${error}`);
       router.push('/organizations');
     }
-  }, [error, router]);
+  }, [error, queryError, router]);
 
   const updateOrganization = api.organization.updateOrganization.useMutation({
     onSuccess: () => {
@@ -146,6 +158,12 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
   const handleUpdateOrganization = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+
+    if (!orgId) {
+      toast.error("Missing organization id")
+      setIsSubmitting(false)
+      return
+    }
     
     if (!name.trim()) {
       toast.error("Organization name is required")
@@ -154,7 +172,7 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
     }
 
     updateOrganization.mutate({
-      id: params.id,
+      id: orgId,
       name,
       description: description.trim() || undefined,
       logoUrl: logoUrl.trim() || undefined
@@ -162,12 +180,22 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
   }
 
   const handleDeleteOrganization = () => {
-    deleteOrganization.mutate({ id: params.id })
+    if (!orgId) {
+      toast.error("Missing organization id")
+      return
+    }
+    deleteOrganization.mutate({ id: orgId })
   }
 
   const handleInviteMember = (e: React.FormEvent) => {
     e.preventDefault()
     setIsInviting(true)
+
+    if (!orgId) {
+      toast.error("Missing organization id")
+      setIsInviting(false)
+      return
+    }
     
     if (!inviteEmail.trim()) {
       toast.error("Email is required")
@@ -176,23 +204,31 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
     }
 
     addMember.mutate({
-      organizationId: params.id,
+      organizationId: orgId,
       userEmail: inviteEmail,
       role: inviteRole
     })
   }
 
   const handleUpdateMemberRole = (userId: string, role: "ADMIN" | "MEMBER") => {
+    if (!orgId) {
+      toast.error("Missing organization id")
+      return
+    }
     updateMemberRole.mutate({
-      organizationId: params.id,
+      organizationId: orgId,
       userId,
       role
     })
   }
 
   const handleRemoveMember = (userId: string) => {
+    if (!orgId) {
+      toast.error("Missing organization id")
+      return
+    }
     removeMember.mutate({
-      organizationId: params.id,
+      organizationId: orgId,
       userId
     })
   }
@@ -514,7 +550,7 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Projects</h2>
             
-            <Button onClick={() => router.push(`/projects/create?organizationId=${params.id}`)}>
+            <Button onClick={() => router.push(`/projects/create?organizationId=${orgId}`)}>
               <Plus className="mr-2 h-4 w-4" />
               New Project
             </Button>
@@ -547,7 +583,7 @@ export default function OrganizationByIDView({ params }: { params: { id: string 
               <p className="text-gray-500 mb-6 max-w-md mx-auto">
                 Create a new project to get started with your organization
               </p>
-              <Button onClick={() => router.push(`/projects/create?organizationId=${params.id}`)}>
+              <Button onClick={() => router.push(`/projects/create?organizationId=${orgId}`)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Project
               </Button>

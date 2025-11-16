@@ -1038,7 +1038,7 @@ export const projectRouter = createTRPCRouter({
             per_page: 1,
             affiliation: "owner,collaborator",
           });
-        console.log("🚀 ~ repos:", repos)
+        console.log("🚀 ~ repos:", repos?.length)
         hasPrivateRepoAccess = repos.length > 0;
       } catch (error) {
         console.error("Error checking GitHub token validity:", error);

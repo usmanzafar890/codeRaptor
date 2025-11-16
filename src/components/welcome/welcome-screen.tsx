@@ -330,7 +330,7 @@ export default function WelcomeScreen() {
                 ) : (
                   <Button
                     onClick={completeSetup}
-                    disabled={!githubConnected || isLoading}
+                    disabled={isLoading}
                     className="h-9 text-sm"
                   >
                     {isLoading ? (
