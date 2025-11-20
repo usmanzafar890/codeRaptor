@@ -46,34 +46,88 @@ export async function aiSummariseCommit(diff: string) {
 
 
 
-export async function summariseCode(doc: Document) {
+export async function summariseCode(doc: Document, retries: number = 3): Promise<string> {
     console.log("getting summary for", doc.metadata.source);
-    try {
-    const code = doc.pageContent.slice(0, 4000); // Limit to 4000 characters
-    const response = await model.generateContent([
-        `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects`,
-        `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const code = doc.pageContent.slice(0, 1000);
+            
+            // Skip empty or very short files
+            if (!code || code.trim().length < 10) {
+                return `Empty or minimal content file: ${doc.metadata.source}`;
+            }
+            
+            const response = await model.generateContent([
+                `You are an intelligent senior software engineer who specializes in onboarding junior software engineers onto projects`,
+                `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
 Here is the code:
 ---
 ${code}
 ---
         Give a summary no more than 100 words of the code above`,
-        
-    ]);
+            ]);
 
-    return response.response.text()
-} catch (error) {
-return ""
-}}
+            const summary = response.response.text();
+            
+            // Validate summary was generated
+            if (!summary || summary.trim().length === 0) {
+                throw new Error("Empty summary returned");
+            }
+            
+            return summary;
+        } catch (error) {
+            console.error(`Error generating summary for ${doc.metadata.source} (attempt ${attempt}/${retries}):`, error);
+            
+            if (attempt === retries) {
+                // Last attempt failed, return a fallback summary
+                return `Code file: ${doc.metadata.source}. Unable to generate AI summary after ${retries} attempts.`;
+            }
+            
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+    }
+    
+    return `Code file: ${doc.metadata.source}. Summary generation failed.`;
+}
 
 
  
-export async function generateEmbedding(summary:string) {
+export async function generateEmbedding(summary: string, retries: number = 3): Promise<number[]> {
     const model = genAI.getGenerativeModel({
         model: "text-embedding-004"
     })
 
-    const result = await model.embedContent(summary)
-    const embedding = result.embedding
-    return embedding.values
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            // Ensure summary is not empty
+            if (!summary || summary.trim().length === 0) {
+                throw new Error("Empty summary provided for embedding");
+            }
+
+            const result = await model.embedContent(summary);
+            const embedding = result.embedding;
+            
+            if (!embedding || !embedding.values || embedding.values.length === 0) {
+                throw new Error("Empty embedding returned");
+            }
+            
+            return embedding.values;
+        } catch (error) {
+            console.error(`Error generating embedding (attempt ${attempt}/${retries}):`, error);
+            
+            if (attempt === retries) {
+                // Last attempt failed, return a zero vector as fallback
+                console.warn("Returning zero vector as fallback for failed embedding");
+                return new Array(768).fill(0);
+            }
+            
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+    }
+    
+    // Fallback: return zero vector
+    return new Array(768).fill(0);
 }

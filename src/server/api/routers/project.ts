@@ -136,16 +136,7 @@ export const projectRouter = createTRPCRouter({
           },
         });
       }
-      await indexGithubRepo(
-        project.id,
-        input.githubUrl,
-        githubAccount?.gitToken ||
-        input.githubToken ||
-        process.env.GITHUB_TOKEN,
-      );
-      await pollCommits(project.id, ctx.user.userId!).catch((error) => {
-        console.error("Error polling commits after return:", error);
-      });
+      // Deduct credits immediately
       await ctx.db.user.update({
         where: { id: ctx.user.userId! },
         data: {
@@ -154,6 +145,23 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
+
+      // Process indexing and commit polling in background (don't await)
+      // This allows the project creation to return immediately
+      indexGithubRepo(
+        project.id,
+        input.githubUrl,
+        githubAccount?.gitToken ||
+        input.githubToken ||
+        process.env.GITHUB_TOKEN,
+      ).catch((error) => {
+        console.error("Error indexing repository in background:", error);
+      });
+      
+      pollCommits(project.id, ctx.user.userId!).catch((error) => {
+        console.error("Error polling commits in background:", error);
+      });
+      
       return project;
     }),
 
