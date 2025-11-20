@@ -119,10 +119,7 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
-      
-      // Wait 30 seconds after creating the project
-      await new Promise(resolve => setTimeout(resolve, 30000));
-      
+
       if (input.branches) {
         await (ctx.db as any).projectBranch.createMany({
           data: input.branches.map((branch) => ({
@@ -150,9 +147,14 @@ export const projectRouter = createTRPCRouter({
         },
       });
 
+
+      await pollCommits(project.id, ctx.user.userId!).catch((error) => {
+        console.error("Error polling commits in background:", error);
+      });
+
       // Process indexing and commit polling in background (don't await)
       // This allows the project creation to return immediately
-      indexGithubRepo(
+       indexGithubRepo(
         project.id,
         input.githubUrl,
         githubAccount?.gitToken ||
@@ -161,11 +163,9 @@ export const projectRouter = createTRPCRouter({
       ).catch((error) => {
         console.error("Error indexing repository in background:", error);
       });
-      
-      pollCommits(project.id, ctx.user.userId!).catch((error) => {
-        console.error("Error polling commits in background:", error);
-      });
-      
+
+
+
       return project;
     }),
 
