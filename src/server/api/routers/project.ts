@@ -119,6 +119,10 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
+      
+      // Wait 30 seconds after creating the project
+      await new Promise(resolve => setTimeout(resolve, 30000));
+      
       if (input.branches) {
         await (ctx.db as any).projectBranch.createMany({
           data: input.branches.map((branch) => ({
