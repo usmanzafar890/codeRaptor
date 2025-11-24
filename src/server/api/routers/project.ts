@@ -154,7 +154,7 @@ export const projectRouter = createTRPCRouter({
 
       // Process indexing and commit polling in background (don't await)
       // This allows the project creation to return immediately
-       indexGithubRepo(
+      indexGithubRepo(
         project.id,
         input.githubUrl,
         githubAccount?.gitToken ||
