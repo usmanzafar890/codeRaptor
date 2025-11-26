@@ -147,14 +147,7 @@ export const projectRouter = createTRPCRouter({
         },
       });
 
-
-      await pollCommits(project.id, ctx.user.userId!).catch((error) => {
-        console.error("Error polling commits in background:", error);
-      });
-
-      // Process indexing and commit polling in background (don't await)
-      // This allows the project creation to return immediately
-      indexGithubRepo(
+      await indexGithubRepo(
         project.id,
         input.githubUrl,
         githubAccount?.gitToken ||
@@ -164,7 +157,9 @@ export const projectRouter = createTRPCRouter({
         console.error("Error indexing repository in background:", error);
       });
 
-
+      await pollCommits(project.id, ctx.user.userId!).catch((error) => {
+        console.error("Error polling commits in background:", error);
+      });
 
       return project;
     }),

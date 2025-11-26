@@ -205,7 +205,7 @@ return ""
  
 export async function generateEmbedding(summary:string) {
     const model = genAI.getGenerativeModel({
-        model: "gemini-embedding-001"
+        model: "embedding-001"
     })
 
     const result = await model.embedContent(summary)
